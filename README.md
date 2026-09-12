@@ -1,30 +1,46 @@
-# A clean pipeline doesn't mean a safe cluster
+# A clean pipeline tells you nothing about what happens after deploy
 
 **Onclusive — Senior DevSecOps Engineer, 2026**
-*(runtime security for the same platform in [`01-enterprise-cicd-platform`](../01-enterprise-cicd-platform))*
+*(runtime security for the platform in [`01-enterprise-cicd-platform`](../01-enterprise-cicd-platform))*
 
-Getting an image through a gated pipeline tells you it was scanned. It tells you nothing about
-what that container is allowed to do once it's actually running — and mission-critical production
-workloads were running with no boundary between them. Any pod could talk to any other pod. Service
-accounts had more privilege than they used. If something did get through the pipeline gates, or a
-workload was compromised at runtime through no fault of the pipeline at all, there was nothing on
-the cluster side to contain it.
+## What a passing pipeline doesn't guarantee
 
-I closed that gap in three pieces.
+An image that clears every gate in the CI/CD platform is a scanned, tested image. It says nothing
+about what that container is allowed to do once it's actually scheduled onto a cluster running
+mission-critical production workloads — and when I looked at the runtime side of this platform,
+the answer was: almost anything. Any pod could reach any other pod on the network by default.
+Service accounts routinely had more privilege than the workload attached to them actually used,
+because "give it enough permission that it definitely works" is the path of least resistance when
+nobody's enforcing otherwise. And there was nothing at the cluster boundary checking that a
+deployed image had actually been through the scanning pipeline at all — if a deploy manifest ever
+bypassed CI, for any reason, the cluster would run it without complaint.
 
-**Admission control that actually checks provenance.** An OPA Gatekeeper policy
-(`scripts/gatekeeper-constraint.yaml`) rejects any deployment whose image isn't from the scanned,
-approved registry — enforced by the cluster itself, not something that relies on the pipeline
-having done its job correctly every single time.
+That last gap is the one that actually worried me. A pipeline gate only protects you if every path
+to production goes through the pipeline, and I don't like betting security posture on "every path
+always does."
 
-**Network policy, default-deny.** Every namespace starts closed (`scripts/network-policy.yaml`).
-Services get explicit allow rules for exactly the traffic they need. I rolled this out namespace by
-namespace with a monitoring window before flipping enforcement on, because the first attempt at
-doing it cluster-wide broke legitimate traffic I hadn't accounted for — lesson learned the
-expensive way once, applied carefully after.
+## Three layers, each closing a different failure mode
 
-**RBAC scoped to what a service actually needs.** No cluster-admin service accounts for
-application workloads, full stop (`scripts/rbac.yaml`).
+**Admission control that checks provenance, not just intent.** I wrote an OPA Gatekeeper policy
+(`scripts/gatekeeper-constraint.yaml`) that rejects any deployment referencing an image outside
+the approved, scanned registry — enforced by the cluster itself. This is the layer that makes the
+CI/CD gates actually mean something: even if a manifest somehow bypassed the pipeline, the cluster
+independently refuses to run it.
+
+**Default-deny networking, rolled out carefully.** Every namespace now starts with a deny-all
+`NetworkPolicy` (`scripts/network-policy.yaml`), with explicit allow rules added per service for
+exactly the traffic it needs. I'll be honest about how this actually went: my first attempt was to
+apply default-deny cluster-wide in one pass, and it broke legitimate traffic I hadn't fully
+mapped — some services talked to dependencies I didn't know about until they stopped working. I
+backed that out, went namespace by namespace instead, ran each one in monitor-only mode for a few
+days to see what traffic actually existed before switching to enforce, and only then moved to the
+next namespace. Slower, and it's the only way I'd trust this kind of change on a production
+financial-adjacent system.
+
+**RBAC scoped to the job, not the convenience.** No service account for an application workload
+gets cluster-admin, ever (`scripts/rbac.yaml`) — each one gets exactly the verbs on exactly the
+resources it uses, which sounds obvious until you look at how many production clusters don't
+actually enforce it.
 
 ```mermaid
 flowchart TD
@@ -36,20 +52,22 @@ flowchart TD
     NetPol --> Contained[A compromised pod can't move laterally]
 ```
 
-## Why I think about it this way
+## Why I don't accept "our pipeline is secure" as a complete answer
 
-I've seen the "our pipeline is secure" answer used to paper over a cluster that would let a
-compromised container reach anything on the network. Pipeline security and runtime security are
-different problems with different failure modes, and treating them as the same conversation is
-how you end up with a false sense of coverage. This project exists because I'd rather have both
-layers and never need the second one, than have one layer and find out the hard way it wasn't
-enough.
+I've sat in enough conversations where "we scan everything in CI" was offered as the entire
+security story for a platform, with runtime left as an implicit assumption rather than a designed
+control. Pipeline security and runtime security fail differently — a pipeline gate stops a bad
+artifact from being built; a runtime control stops a workload, however it got there, from doing
+more damage than its job requires. Treating them as the same conversation is how a team ends up
+with real coverage on paper and a real gap in practice. I'd rather carry both layers and never
+need the second one than find out the hard way it was missing.
 
-## What it's worth
+## What this bought the platform
 
-This is part of what keeps the platform at **99.9%** uptime and holding **45%** fewer incidents —
-a workload that misbehaves inside a default-deny network can't turn into a wider incident, because
-it physically can't reach anything it wasn't explicitly allowed to.
+This is a meaningful part of why the broader platform holds **99.9%** uptime and **45%** fewer
+incidents: a workload that misbehaves — compromised, misconfigured, or just buggy — inside a
+default-deny network with scoped RBAC can't turn into a platform-wide incident, because by design
+it can't reach anything it wasn't explicitly allowed to reach.
 
 *Detection layer: [`04-security-observability-stack`](../04-security-observability-stack) — how a
-violation here actually gets seen.*
+violation at this layer actually gets noticed.*
