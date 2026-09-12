@@ -1,80 +1,52 @@
-# DevSecOps Shift-Left Security Program
+# Getting teams to actually fix what the scanners find
 
-**Employer:** Onclusive — Senior DevSecOps Engineer · **Timeframe:** 2026 · **Role:** Program
-owner, worked directly with development teams · **Client:** withheld under NDA
+**Onclusive — Senior DevSecOps Engineer, 2026**
+*(the security program built on top of the platform in [`01-enterprise-cicd-platform`](../01-enterprise-cicd-platform))*
 
-> Re-cut of the same platform in [`01-enterprise-cicd-platform`](../01-enterprise-cicd-platform),
-> viewed through the security-culture and process lens rather than the pipeline-engineering lens.
+Here's a thing nobody tells you when they sell you a security scanner: turning it on is the easy
+part. The hard part is that a scanner producing findings nobody acts on is worse than not having
+one — it trains engineers to click past red X's, and eventually they stop reading them at all.
 
-## Summary
+That was the actual problem I was solving. Not "we need more scanning." We had scanning. What we
+didn't have was a reason for anyone to trust it.
 
-Moving security left meant more than adding scanners to a pipeline — it meant giving development
-teams the guidance, tooling, and workflow to act on findings themselves, rather than routing
-everything through a security team as a bottleneck.
+## What I built instead of more rules
 
-## The challenge
-
-Security findings were being generated (by SAST/SCA/secrets scanners) faster than teams could
-triage them without guidance. A scanner that produces noise nobody acts on is worse than no
-scanner — it trains people to ignore the tool.
-
-## Architecture
+A secrets-scanning pre-commit hook, so a credential never gets a chance to sit in git history in
+the first place — cheaper to catch at a developer's laptop than in a CI log six people already
+saw. A severity threshold that only blocks a merge for Critical/High and just tracks Medium/Low —
+because a gate that blocks on everything teaches people to find workarounds, and a gate that
+blocks on the right things teaches people to trust it. And a lightweight threat-modeling template
+(`scripts/threat-model-template.md`) for anything architecturally significant — new service
+boundary, new external integration — built to take thirty minutes with the owning team, not to
+become a document that never gets finished.
 
 ```mermaid
 flowchart TD
-    Code[Developer commits code] --> Precommit[Pre-commit: secrets scan]
+    Commit[git commit] --> Precommit[Secrets scan, local]
     Precommit --> PR[Pull request]
-    PR --> SAST[SAST — SonarQube]
-    PR --> SCA[SCA — dependency scan]
-    SAST --> Triage{Severity threshold}
-    SCA --> Triage
-    Triage -- Critical/High --> Block[Blocks merge, routed to owning team]
-    Triage -- Medium/Low --> Backlog[Tracked, not blocking]
-    Block --> ThreatModel[Threat modeling session if architectural]
-    ThreatModel --> Remediation[Remediation workflow]
-    Remediation --> Code
+    PR --> Scan[SAST + SCA]
+    Scan --> Sev{Severity}
+    Sev -- Critical/High --> Block[Blocks merge, routed to owner, SLA attached]
+    Sev -- Medium/Low --> Track[Tracked, doesn't block]
+    Block --> Fix[Owning team fixes it]
 ```
 
-## Implementation
+## Why this is a management problem, not a tooling one
 
-- **Secrets scanning at commit time**, not just in CI — a pre-commit hook (`scripts/pre-commit-config.yaml`)
-  catches accidental credential commits before they ever reach a shared branch.
-- **Secure coding guidance** delivered as concrete, language-specific checklists tied to the
-  SAST rule categories actually firing, not a generic security-policy document nobody reads.
-- **Threat modeling** for architecturally significant changes (new service boundaries, new
-  external integrations) — lightweight, using a structured template
-  (`scripts/threat-model-template.md`) rather than a heavyweight formal process.
-- **Cross-functional remediation workflow**: findings above a severity threshold auto-create a
-  tracked issue assigned to the owning team with a service-level agreement, not a shared
-  security-team backlog.
+I've watched security programs fail for the same reason twice now — someone picks the strictest
+possible policy, teams route around it within a month, and six months later there's a "security
+theater" reputation that takes years to undo. The fix isn't a better scanner. It's designing the
+threshold and the ownership model so the easiest path for an engineer is also the compliant one.
+That's the actual DevSecOps job, and it's mostly a people-and-incentives problem wearing a
+technical costume.
 
-## Security
+## What it did for the numbers
 
-This program is the process layer on top of the technical gates described in
-[`01-enterprise-cicd-platform`](../01-enterprise-cicd-platform) — the gates enforce the policy,
-this program is what makes the policy something teams can actually act on.
+This program runs inside the same pipeline as the platform work, so the headline numbers are
+shared: **60%** more deploys, **45%** fewer production incidents — both while enforcing the policy
+at every stage rather than relaxing it to hit velocity targets. Those two moving in the same
+direction at once is the actual proof the design worked, because they usually fight each other.
 
-## Outcomes
-
-- **+60%** deployment frequency maintained *while* enforcing security policy at every stage —
-  the point of shift-left is that security stopped being a tax on velocity
-- **−45%** production incidents (shared outcome with the CI/CD platform work, since the two are
-  the same underlying effort)
-- Findings triaged and remediated by owning teams directly, rather than queued through a central
-  security backlog
-
-## Lessons
-
-The threshold-based routing (block on Critical/High, track-not-block on Medium/Low) mattered more
-than any individual tool choice — a program that blocks on every finding regardless of severity
-teaches teams to find workarounds, not to fix the actual risk.
-
-## Tech stack
-
-SonarQube, Trivy (SCA/secrets), HashiCorp Vault, OPA Gatekeeper, MITRE ATT&CK (threat-modeling
-reference), CIS Benchmarks, NIST, ISO 27001/27005 (fundamentals)
-
-## Related
-
-- [`01-enterprise-cicd-platform`](../01-enterprise-cicd-platform) — the pipeline this program's gates run inside
-- [`03-kubernetes-workload-hardening`](../03-kubernetes-workload-hardening) — the runtime-security counterpart
+*Runtime counterpart: [`03-kubernetes-workload-hardening`](../03-kubernetes-workload-hardening) —
+what happens if something does slip past all of this.*

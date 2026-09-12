@@ -1,5 +1,5 @@
-# Representative pre-commit configuration — secrets scanning at commit time, before code ever
-# reaches a shared branch. Paired with the CI-level SCA/SAST gates in ../01-enterprise-cicd-platform.
+# Secrets scanning at commit time, before anything reaches a shared branch. Pairs with the
+# CI-level SCA/SAST gates in ../01-enterprise-cicd-platform.
 
 repos:
   - repo: https://github.com/Yelp/detect-secrets
