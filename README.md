@@ -1,51 +1,39 @@
-# Project Portfolio — Yahia Mohamed Benabbou
+# Projects
 
-Ten technical write-ups drawn from real, dated professional experience across three employers
-(Onclusive, OneCloud, OLLMOO) plus one academic capstone. Every fact in every write-up — dates,
-employer, technology, metrics — traces to the résumé and to the case studies already published
-at [profile.nearvic.com](https://profile.nearvic.com). Nothing here is invented.
+I'm Yahia — a senior DevOps/DevSecOps engineer and cloud architect based in Rabat, currently
+running platform and security engineering at Onclusive, with the two years before that spent
+building cloud and DevOps practice at OneCloud for banking and fintech clients, and before that
+two years as a full-stack engineer turned DevOps specialist at a London startup.
 
-## Why 10 write-ups from 3 jobs
+This repo (and its twin, [yahia-benabbou-portfolio](https://github.com/beniaXcode/yahia-benabbou-portfolio) —
+same content, just filed under my name instead of the practice) is ten write-ups pulled from that
+work. I didn't invent ten different clients to hit a round number — four real engagements, cut by
+the different disciplines each one actually involved, because a banking migration is a cost story,
+a security story, and an architecture story all at once, and I wanted each of those to get room to
+breathe instead of being buried in one giant case study. Each write-up says plainly which other one
+it shares a client and timeframe with.
 
-Real engineering engagements are rarely single-issue — a banking-platform migration is
-simultaneously a cloud-architecture story, a cost story, and a security story. Rather than
-inflate the count with invented side projects, this portfolio follows the same "re-cut by
-discipline" pattern already used on profile.nearvic.com's own security case studies: the same
-real engagements, described through different technical lenses, each one substantial enough to
-stand alone. No two write-ups claim to be a different *client*; several share an employer and a
-timeframe by design, and each one says so.
+Client names stay out of it — every engagement here was under NDA, same as everywhere else I write
+about this work. What's real: the dates, the employer, the stack, the numbers. The code in each
+`scripts/` folder is me rebuilding the pattern I actually used, clean, for something I can show you —
+not a leaked copy of anyone's production repo.
 
-| # | Project | Employer | Timeframe |
-|---|---|---|---|
-| 01 | Enterprise CI/CD Platform Modernization | Onclusive | 2026 |
-| 02 | DevSecOps Shift-Left Security Program | Onclusive | 2026 |
-| 03 | Kubernetes Workload Security Hardening | Onclusive | 2026 |
-| 04 | Security Observability & Monitoring Stack | Onclusive | 2026 |
-| 05 | Multi-Cloud Banking Platform Migration | OneCloud | 2024–2025 |
-| 06 | Zero-Trust Architecture for Financial Workloads | OneCloud | 2024–2025 |
-| 07 | Morocco's First OCI Compute Cloud@Customer Deployment | OneCloud | 2025 |
-| 08 | GPU Infrastructure for AI/Inference Workloads | OneCloud | 2025 |
-| 09 | Cloud-Native SaaS Platform Engineering | OLLMOO | 2022–2024 |
-| 10 | Application Security & Observability for the SaaS Platform | OLLMOO | 2022–2024 |
+**Branches, one per project:**
 
-Each project lives on its own branch (`01-enterprise-cicd-platform`, `02-devsecops-shift-left`,
-etc.), containing a `README.md` (challenge, architecture, implementation, security, outcomes,
-lessons) plus a `scripts/` folder with representative implementation artifacts — Terraform,
-Kubernetes manifests, CI pipeline configs, and similar. These are **illustrative
-re-implementations of the real architecture and approach**, written to demonstrate the same
-patterns used in production — not the actual proprietary client code, which stays under NDA like
-everywhere else on this practice's public-facing work.
+- `01-enterprise-cicd-platform` — standing up one CI/CD platform for 30+ microservices
+- `02-devsecops-shift-left` — the security program layered on top of it
+- `03-kubernetes-workload-hardening` — locking down the clusters those services run on
+- `04-security-observability-stack` — the monitoring that keeps it all honest
+- `05-multicloud-banking-migration` — moving a live bank off VMware, onto OCI and AWS
+- `06-zero-trust-financial-workloads` — the security model that migration landed on
+- `07-oci-compute-cloud-at-customer` — the first Oracle C3 rack ever installed in this country
+- `08-gpu-inference-infrastructure` — GPU fleets for inference, tuned so the cost makes sense
+- `09-cloud-native-saas-platform` — a product I built and shipped, not just operated
+- `10-appsec-observability-saas` — auth, defenses, and tracing on that same product
 
-## Background
+One more thing worth knowing about me: my engineering degree's capstone was called *"Multi-Cloud
+Security and Automation Platform."* I picked that specialization before anyone was paying me to
+have it, and everything below is what happened after.
 
-Bachelor of Engineering, Programmable Services, Systems & Networks (RSSP) — National School of
-Applied Sciences of Marrakesh (ENSA Marrakesh). Capstone project: *"Multi-Cloud Security and
-Automation Platform"* — the academic starting point for the multi-cloud and security-automation
-focus that runs through every project below.
-
-## Links
-
-- [nearvic.com](https://nearvic.com) — the practice
-- [profile.nearvic.com](https://profile.nearvic.com) — full professional background, credentials,
-  and the original case studies this portfolio expands on
-- [linkedin.com/in/yahia-mohamed-benabbou](https://www.linkedin.com/in/yahia-mohamed-benabbou)
+Reach me through [profile.nearvic.com](https://profile.nearvic.com) or
+[nearvic.com](https://nearvic.com) if any of this looks like the kind of problem you're sitting on.
