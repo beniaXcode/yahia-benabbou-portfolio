@@ -1,0 +1,31 @@
+# Representative Istio configuration enforcing strict mTLS mesh-wide, rolled out via permissive
+# mode first (illustrative of the pattern, not the literal client config).
+
+apiVersion: security.istio.io/v1
+kind: PeerAuthentication
+metadata:
+  name: default
+  namespace: istio-system
+spec:
+  mtls:
+    mode: STRICT
+---
+# Explicit authorization policy: service B only accepts calls from service A, and only on the
+# expected port — identity-based, not network-location-based.
+apiVersion: security.istio.io/v1
+kind: AuthorizationPolicy
+metadata:
+  name: service-b-allow-from-a
+  namespace: banking-platform
+spec:
+  selector:
+    matchLabels:
+      app: service-b
+  action: ALLOW
+  rules:
+    - from:
+        - source:
+            principals: ["cluster.local/ns/banking-platform/sa/service-a"]
+      to:
+        - operation:
+            ports: ["8080"]
