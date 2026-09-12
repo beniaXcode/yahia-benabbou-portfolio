@@ -1,90 +1,57 @@
-# Multi-Cloud Banking Platform Migration
+# Moving a live bank off VMware without a single unplanned outage
 
-**Employer:** OneCloud — Cloud & DevOps Engineer · **Timeframe:** 2024–2025 · **Role:** Led the
-migration end to end · **Client:** banking/fintech client, withheld under NDA
+**OneCloud — Cloud & DevOps Engineer, 2024–2025**
+*(security architecture of this same migration: [`06-zero-trust-financial-workloads`](../06-zero-trust-financial-workloads))*
 
-> Re-cut through a security lens in [`06-zero-trust-financial-workloads`](../06-zero-trust-financial-workloads).
+I led the migration of core banking applications — 500K+ daily transactions — off an on-premises
+VMware estate onto a multi-cloud architecture across OCI and AWS. In most industries "the
+migration went a bit rough for a week" is an inconvenience. In banking, an outage during a cutover
+is a regulatory event with a paper trail. That constraint shaped every decision on this project
+more than any technology choice did.
 
-## Summary
+## The plan I actually ran
 
-End-to-end migration of core banking applications off on-premises infrastructure (including
-VMware estates) onto a multi-cloud architecture across OCI and AWS — a live financial system,
-serving 500K+ daily transactions, in an environment where an outage is a regulatory event, not
-just an inconvenience.
+I didn't move anything until the destination existed and was validated — landing zones,
+network topology, IAM boundaries defined in Terraform (`scripts/landing-zone.tf`) and stood up on
+both clouds before a single workload moved. Ansible (`scripts/compliance-baseline.yml`) applied
+one compliance baseline to every instance, which mattered more than it sounds: the on-premises
+estate had years of accumulated configuration drift, one-off fixes nobody documented, servers that
+were "special" for reasons lost to history. Automating the baseline was as much about breaking
+that inheritance as it was about the new infrastructure.
 
-## The challenge
-
-On-premises infrastructure for a regulated financial workload doesn't move like a typical
-lift-and-shift: the migration had to preserve data residency and compliance posture throughout,
-with cutover runbooks precise enough that an outage during the move itself wasn't an option.
-
-## Architecture
+Cutover itself was staged, not a weekend big-bang. Each stage had a defined rollback path, which
+cost more up-front planning time than doing it in one shot would have. On a system where 500K+
+daily transactions and a regulator are both real, I'd make that trade every time.
 
 ```mermaid
 flowchart TB
     subgraph OnPrem[On-premises — VMware]
-        VM1[Core banking app]
-        VM2[Database tier]
+        App[Core banking app]
+        DB[Database tier]
     end
-    subgraph Cloud[Multi-cloud landing zone]
-        subgraph OCI[OCI]
-            OKE[OCI Kubernetes Engine]
-            OCIDB[Managed database]
-        end
-        subgraph AWS[AWS]
-            EKS[Amazon EKS]
-            AWSDB[RDS]
-        end
+    subgraph Cloud[Multi-cloud landing zone, built and validated first]
+        OKE[OCI — OKE]
+        EKS[AWS — EKS]
     end
-    VM1 -- "cutover runbook, staged traffic shift" --> OKE
-    VM1 -- "cutover runbook, staged traffic shift" --> EKS
-    VM2 -- "data migration, verified parity" --> OCIDB
-    VM2 -- "data migration, verified parity" --> AWSDB
-    OKE --> Terraform[Terraform modules — landing zone as code]
-    EKS --> Terraform
-    Terraform --> Ansible[Ansible — configuration & compliance]
+    App -- "staged, reversible cutover" --> OKE
+    App -- "staged, reversible cutover" --> EKS
+    DB -- "verified data parity" --> Cloud
 ```
 
-## Implementation
+## What it actually took
 
-- **Landing zone as code**: Terraform modules (`scripts/landing-zone.tf`) defined the target
-  network topology, IAM boundaries, and compute footprint on both OCI and AWS before any
-  workload moved — the destination existed and was validated ahead of cutover, not built
-  reactively during it.
-- **Configuration automation**: Ansible playbooks (`scripts/compliance-baseline.yml`) applied a
-  consistent compliance baseline across every provisioned instance, eliminating the
-  configuration drift that on-premises estates had accumulated over years.
-- **Cutover runbooks**: staged, reversible traffic shifts rather than a single big-bang cutover —
-  each stage had a defined rollback path.
+Migrating a regulated financial system isn't a lift-and-shift with extra paperwork — data
+residency and compliance posture had to hold throughout the move, not just at the destination.
+That's the reason this gets its own write-up rather than folding into a generic "cloud migration"
+story: the hard part was never the Terraform, it was proving at every stage that the constraint
+still held.
 
-## Security
+## The numbers
 
-Migration ran alongside the zero-trust and compliance-automation work covered in
-[`06-zero-trust-financial-workloads`](../06-zero-trust-financial-workloads) — the destination
-environment wasn't just "the same app on new infrastructure," it enforced identity-based access
-and automated compliance checks from the day it went live.
+**500K+** daily transactions kept running. **99.9%** availability held through the cutover itself.
+**Zero** unplanned outages attributable to the migration. **35%** lower infrastructure cost once it
+landed. **70%** faster provisioning going forward, and configuration drift — the thing that had
+quietly accumulated for years on-prem — effectively eliminated, at **99.9%** environment
+consistency.
 
-## Outcomes
-
-- **500K+** daily transactions served by the migrated platform
-- **−35%** infrastructure cost after migration
-- **99.9%** availability held through the cutover itself
-- **0** unplanned outages attributable to the migration
-- **−70%** deployment/provisioning time via the Terraform + Ansible automation
-- **99.9%** environment consistency — configuration drift eliminated
-
-## Lessons
-
-The staged, reversible cutover plan cost more up-front design time than a big-bang approach would
-have, but on a system where 500K+ daily transactions and regulatory scrutiny are both real, the
-ability to roll back a single stage rather than the whole migration was worth every hour spent
-planning it.
-
-## Tech stack
-
-Terraform, Ansible, Kubernetes (OKE, EKS), OCI, AWS, VMware (source estate), Prometheus, Grafana, Loki
-
-## Related
-
-- [`06-zero-trust-financial-workloads`](../06-zero-trust-financial-workloads) — the security architecture of the destination environment
-- [`07-oci-compute-cloud-at-customer`](../07-oci-compute-cloud-at-customer) — a related OneCloud engagement for a different data-residency constraint
+I'd rather report a boring migration than an exciting one. This was boring, on purpose.

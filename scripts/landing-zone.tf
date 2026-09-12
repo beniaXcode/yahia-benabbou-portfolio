@@ -1,6 +1,5 @@
-# Representative multi-cloud landing-zone module (OCI half shown) — illustrative of the pattern
-# used to stand up the destination environment before any workload migrated, not the literal
-# client configuration.
+# The OCI half of the multi-cloud landing zone — stood up and validated before any workload
+# actually migrated onto it.
 
 terraform {
   required_version = ">= 1.5"

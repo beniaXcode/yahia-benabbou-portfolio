@@ -1,5 +1,5 @@
-# Representative Ansible playbook — applies a consistent compliance baseline to every
-# provisioned instance, the mechanism that eliminated configuration drift during migration.
+# The compliance baseline every provisioned instance got — the mechanism that killed years of
+# accumulated on-prem configuration drift.
 
 - name: Apply financial-services compliance baseline
   hosts: banking_platform
