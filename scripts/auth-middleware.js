@@ -1,6 +1,5 @@
-// Representative Express/Node.js auth middleware — validates an OAuth 2.0/OIDC bearer token at
-// the API entry point and enforces role-based authorization per route. Illustrative of the
-// pattern used across services, not the literal product's code.
+// Validates an OAuth 2.0/OIDC bearer token at the API entry point and enforces role-based
+// authorization per route, so no individual service reimplements its own auth check.
 
 const jwt = require('jsonwebtoken');
 const jwksClient = require('jwks-rsa');

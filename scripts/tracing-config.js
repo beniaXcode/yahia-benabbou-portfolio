@@ -1,5 +1,4 @@
-// Representative AWS X-Ray tracing setup for a Node.js service — illustrative of the
-// distributed-tracing pattern used to cut MTTR by correlating a single request across services.
+// Distributed tracing so "why did this request fail" is one trace, not three separate logs.
 
 const AWSXRay = require('aws-xray-sdk-core');
 const AWSXRayExpress = require('aws-xray-sdk-express');
