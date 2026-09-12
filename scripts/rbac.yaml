@@ -1,0 +1,36 @@
+# Representative namespace-scoped RBAC — a service account gets only the verbs/resources it
+# needs, never cluster-admin. Illustrative of the pattern applied per workload.
+
+apiVersion: v1
+kind: ServiceAccount
+metadata:
+  name: api-service
+  namespace: production-workload
+---
+apiVersion: rbac.authorization.k8s.io/v1
+kind: Role
+metadata:
+  name: api-service-role
+  namespace: production-workload
+rules:
+  - apiGroups: [""]
+    resources: ["configmaps"]
+    verbs: ["get", "list", "watch"]
+  - apiGroups: [""]
+    resources: ["secrets"]
+    resourceNames: ["api-service-db-credentials"]
+    verbs: ["get"]
+---
+apiVersion: rbac.authorization.k8s.io/v1
+kind: RoleBinding
+metadata:
+  name: api-service-binding
+  namespace: production-workload
+subjects:
+  - kind: ServiceAccount
+    name: api-service
+    namespace: production-workload
+roleRef:
+  kind: Role
+  name: api-service-role
+  apiGroup: rbac.authorization.k8s.io

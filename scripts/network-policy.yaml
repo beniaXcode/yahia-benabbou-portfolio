@@ -1,0 +1,59 @@
+# Representative default-deny NetworkPolicy, applied per namespace, then layered with explicit
+# allow rules per service. Illustrative of the pattern used in production, not a literal copy.
+
+apiVersion: networking.k8s.io/v1
+kind: NetworkPolicy
+metadata:
+  name: default-deny-all
+  namespace: production-workload
+spec:
+  podSelector: {}
+  policyTypes:
+    - Ingress
+    - Egress
+---
+# Explicit allow: this service may receive traffic from the ingress controller only.
+apiVersion: networking.k8s.io/v1
+kind: NetworkPolicy
+metadata:
+  name: allow-ingress-controller
+  namespace: production-workload
+spec:
+  podSelector:
+    matchLabels:
+      app: api-service
+  policyTypes:
+    - Ingress
+  ingress:
+    - from:
+        - namespaceSelector:
+            matchLabels:
+              kubernetes.io/metadata.name: ingress-system
+      ports:
+        - protocol: TCP
+          port: 8443
+---
+# Explicit allow: this service may egress to its database and to DNS only.
+apiVersion: networking.k8s.io/v1
+kind: NetworkPolicy
+metadata:
+  name: allow-db-and-dns
+  namespace: production-workload
+spec:
+  podSelector:
+    matchLabels:
+      app: api-service
+  policyTypes:
+    - Egress
+  egress:
+    - to:
+        - podSelector:
+            matchLabels:
+              app: postgres
+      ports:
+        - protocol: TCP
+          port: 5432
+    - to: []
+      ports:
+        - protocol: UDP
+          port: 53

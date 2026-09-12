@@ -1,51 +1,75 @@
-# Project Portfolio — Yahia Mohamed Benabbou
+# Kubernetes Workload Security Hardening
 
-Ten technical write-ups drawn from real, dated professional experience across three employers
-(Onclusive, OneCloud, OLLMOO) plus one academic capstone. Every fact in every write-up — dates,
-employer, technology, metrics — traces to the résumé and to the case studies already published
-at [profile.nearvic.com](https://profile.nearvic.com). Nothing here is invented.
+**Employer:** Onclusive — Senior DevSecOps Engineer · **Timeframe:** 2026 · **Role:** Sole
+platform security engineer · **Client:** withheld under NDA
 
-## Why 10 write-ups from 3 jobs
+> Re-cut of the platform in [`01-enterprise-cicd-platform`](../01-enterprise-cicd-platform),
+> focused on runtime cluster security rather than the pipeline.
 
-Real engineering engagements are rarely single-issue — a banking-platform migration is
-simultaneously a cloud-architecture story, a cost story, and a security story. Rather than
-inflate the count with invented side projects, this portfolio follows the same "re-cut by
-discipline" pattern already used on profile.nearvic.com's own security case studies: the same
-real engagements, described through different technical lenses, each one substantial enough to
-stand alone. No two write-ups claim to be a different *client*; several share an employer and a
-timeframe by design, and each one says so.
+## Summary
 
-| # | Project | Employer | Timeframe |
-|---|---|---|---|
-| 01 | Enterprise CI/CD Platform Modernization | Onclusive | 2026 |
-| 02 | DevSecOps Shift-Left Security Program | Onclusive | 2026 |
-| 03 | Kubernetes Workload Security Hardening | Onclusive | 2026 |
-| 04 | Security Observability & Monitoring Stack | Onclusive | 2026 |
-| 05 | Multi-Cloud Banking Platform Migration | OneCloud | 2024–2025 |
-| 06 | Zero-Trust Architecture for Financial Workloads | OneCloud | 2024–2025 |
-| 07 | Morocco's First OCI Compute Cloud@Customer Deployment | OneCloud | 2025 |
-| 08 | GPU Infrastructure for AI/Inference Workloads | OneCloud | 2025 |
-| 09 | Cloud-Native SaaS Platform Engineering | OLLMOO | 2022–2024 |
-| 10 | Application Security & Observability for the SaaS Platform | OLLMOO | 2022–2024 |
+Getting code through a secure pipeline doesn't secure what happens once a container is actually
+running. This project hardened the cluster side: what a workload is allowed to do once deployed,
+not just what's allowed to reach the cluster.
 
-Each project lives on its own branch (`01-enterprise-cicd-platform`, `02-devsecops-shift-left`,
-etc.), containing a `README.md` (challenge, architecture, implementation, security, outcomes,
-lessons) plus a `scripts/` folder with representative implementation artifacts — Terraform,
-Kubernetes manifests, CI pipeline configs, and similar. These are **illustrative
-re-implementations of the real architecture and approach**, written to demonstrate the same
-patterns used in production — not the actual proprietary client code, which stays under NDA like
-everywhere else on this practice's public-facing work.
+## The challenge
 
-## Background
+Mission-critical production workloads ran on Kubernetes without workload-level guardrails — any
+pod could reach any other pod on the network, run with more privilege than it needed, and there
+was no gate stopping an unscanned image from being deployed.
 
-Bachelor of Engineering, Programmable Services, Systems & Networks (RSSP) — National School of
-Applied Sciences of Marrakesh (ENSA Marrakesh). Capstone project: *"Multi-Cloud Security and
-Automation Platform"* — the academic starting point for the multi-cloud and security-automation
-focus that runs through every project below.
+## Architecture
 
-## Links
+```mermaid
+flowchart TD
+    Image[Container image pushed] --> Scan[Image scan — Trivy]
+    Scan --> Admission{Admission controller}
+    Admission -- unscanned/vulnerable --> Reject[Deployment rejected]
+    Admission -- passes --> Deploy[Scheduled to cluster]
+    Deploy --> NetPol[NetworkPolicy — default deny]
+    Deploy --> RBAC[Namespace-scoped RBAC]
+    NetPol --> Workload[Running workload]
+    RBAC --> Workload
+    Workload --> Explicit[Explicit allow rules only]
+```
 
-- [nearvic.com](https://nearvic.com) — the practice
-- [profile.nearvic.com](https://profile.nearvic.com) — full professional background, credentials,
-  and the original case studies this portfolio expands on
-- [linkedin.com/in/yahia-mohamed-benabbou](https://www.linkedin.com/in/yahia-mohamed-benabbou)
+## Implementation
+
+- **Admission control**: an admission-controller policy (`scripts/gatekeeper-constraint.yaml`,
+  OPA Gatekeeper) rejects any deployment referencing an image that hasn't passed the Trivy scan
+  gate — enforced at the cluster, not just hoped-for from the pipeline.
+- **Network policy, default-deny**: every namespace starts with a deny-all `NetworkPolicy`
+  (`scripts/network-policy.yaml`); services get explicit allow rules only for the traffic they
+  actually need, not open-by-default.
+- **RBAC scoped to namespace**: service accounts get the minimum verbs on the minimum resources
+  they need (`scripts/rbac.yaml`) — no cluster-admin service accounts for application workloads.
+
+## Security
+
+This is defense in depth on top of the pipeline gates in
+[`01-enterprise-cicd-platform`](../01-enterprise-cicd-platform)/[`02-devsecops-shift-left`](../02-devsecops-shift-left)
+— even if something slipped past the pipeline, the cluster itself won't run an unscanned image,
+and a compromised pod can't move laterally by default.
+
+## Outcomes
+
+- Mission-critical production workloads secured with image scanning, admission control, network
+  policies, and RBAC (resume-stated scope of this work)
+- Contributes to the platform's **99.9%** uptime and **−45%** production-incident figures
+  reported for the broader CI/CD platform effort — a compromised or misbehaving workload
+  contained by network policy doesn't become a wider incident
+
+## Lessons
+
+Default-deny `NetworkPolicy` broke more legitimate traffic on rollout than expected — the fix was
+staging it namespace-by-namespace with a monitoring period before enforcing, not flipping it
+cluster-wide on day one.
+
+## Tech stack
+
+Kubernetes, OpenShift, Helm, OPA Gatekeeper, Trivy, RBAC, NetworkPolicy
+
+## Related
+
+- [`01-enterprise-cicd-platform`](../01-enterprise-cicd-platform) — the pipeline these images come from
+- [`04-security-observability-stack`](../04-security-observability-stack) — how violations and incidents get detected
