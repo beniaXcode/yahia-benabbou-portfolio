@@ -1,5 +1,4 @@
-# Representative HashiCorp Vault policy — scopes a service to exactly the dynamic secrets it
-# needs, with short TTLs so a leaked credential expires quickly.
+# Scopes a service to exactly the dynamic secrets it needs, short TTLs so a leak expires fast.
 
 # Dynamic database credentials, 1-hour TTL — service-a only reads its own database role.
 path "database/creds/service-a-role" {

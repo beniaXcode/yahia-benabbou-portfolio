@@ -1,5 +1,4 @@
-# Representative Istio configuration enforcing strict mTLS mesh-wide, rolled out via permissive
-# mode first (illustrative of the pattern, not the literal client config).
+# Strict mTLS mesh-wide, rolled out via permissive mode first to find what would break.
 
 apiVersion: security.istio.io/v1
 kind: PeerAuthentication

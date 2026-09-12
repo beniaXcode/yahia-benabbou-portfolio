@@ -1,84 +1,49 @@
-# Zero-Trust Architecture for Financial Workloads
+# Zero trust, for a system that can't afford to guess
 
-**Employer:** OneCloud — Cloud & DevOps Engineer · **Timeframe:** 2024–2025 · **Role:** Security
-architecture lead for the migration · **Client:** banking/fintech client, withheld under NDA
+**OneCloud — Cloud & DevOps Engineer, 2024–2025**
+*(security lens on the migration in [`05-multicloud-banking-migration`](../05-multicloud-banking-migration))*
 
-> Security lens on the same engagement covered in
-> [`05-multicloud-banking-migration`](../05-multicloud-banking-migration).
+"Trusted internal network" isn't a security boundary a bank can stand behind in front of a
+regulator, and honestly it isn't one I'd want to stand behind anywhere. When I designed the
+security model for the destination environment in the migration above, the decision was: no
+service trusts another service just because they're on the same network. Every call proves who it
+is.
 
-## Summary
+## How that actually works, not just as a slogan
 
-The migrated banking platform didn't just move to new infrastructure — it moved to a
-zero-trust model: identity-based access instead of flat network trust, microsegmentation between
-workloads, mutual TLS for east-west traffic, and compliance checks that run continuously rather
-than the week before an audit.
-
-## The challenge
-
-A financial workload under regulatory scrutiny can't rely on "trusted internal network" as a
-security boundary — every service-to-service call needed to prove its identity, and every
-compliance control needed evidence it was continuously enforced, not just true at the time of
-the last audit.
-
-## Architecture
+Istio service mesh enforces mutual TLS on every service-to-service call
+(`scripts/istio-peer-authentication.yaml`) — I rolled it out in permissive mode first specifically
+to find the services that had been quietly relying on unauthenticated internal calls, then flipped
+to strict once I knew what would break and fixed those first. HashiCorp Vault issues short-lived
+database credentials and certificates instead of long-lived static secrets
+(`scripts/vault-policy.hcl`), so a leaked credential is a small problem with an expiry date instead
+of an open door. And OCI Cloud Guard plus AWS GuardDuty run continuously against the regulatory
+baseline — compliance as something the system proves every minute, not something an auditor
+confirms once a quarter.
 
 ```mermaid
 flowchart TB
-    subgraph Mesh[Service mesh — Istio]
-        SvcA[Service A] -- mTLS --> SvcB[Service B]
-        SvcB -- mTLS --> SvcC[Service C]
-    end
-    Vault[HashiCorp Vault] -- dynamic secrets --> SvcA
-    Vault -- dynamic secrets --> SvcB
-    Vault -- dynamic secrets --> SvcC
-    IAM[Identity-based access policy] --> Mesh
-    CloudGuard[OCI Cloud Guard] -- continuous checks --> Mesh
-    GuardDuty[AWS GuardDuty] -- continuous checks --> Mesh
-    CloudGuard --> Compliance[Compliance dashboard]
-    GuardDuty --> Compliance
+    A[Service A] -- mTLS, identity-checked --> B[Service B]
+    B -- mTLS --> C[Service C]
+    Vault[Vault — short-lived creds] --> A
+    Vault --> B
+    Vault --> C
+    Guard[Cloud Guard + GuardDuty — continuous] --> Compliance[Compliance evidence, always current]
 ```
 
-## Implementation
+## The judgment call worth flagging
 
-- **Mutual TLS by default**: Istio service mesh (`scripts/istio-peer-authentication.yaml`) enforces
-  mTLS for every service-to-service call — no plaintext east-west traffic, and no service can
-  assume trust based on network location alone.
-- **Microsegmentation**: identity-based access policies (`scripts/vault-policy.hcl`) scope what
-  each service can reach and what secrets it can read, mirroring the RBAC/NetworkPolicy pattern
-  in [`03-kubernetes-workload-hardening`](../03-kubernetes-workload-hardening) but for a
-  regulated, cross-cloud environment.
-- **Dynamic secrets**: HashiCorp Vault issues short-lived database credentials and certificates
-  rather than long-lived static secrets — a leaked credential expires quickly instead of staying
-  valid indefinitely.
-- **Continuous compliance**: OCI Cloud Guard and AWS GuardDuty run continuously against the
-  regulatory baseline, rather than a periodic audit-time check.
+Going straight to strict mTLS mesh-wide would have broken things blind — permissive mode first was
+the only way to find every quiet dependency on unauthenticated calls without an incident. That
+sequencing decision is the actual work here; Istio doing the enforcement is the easy part once
+you've made it.
 
-## Security
+## Where it landed
 
-This is the security architecture underneath the migration described in
-[`05-multicloud-banking-migration`](../05-multicloud-banking-migration) — the destination
-environment was zero-trust from the day the first workload cut over, not retrofitted after.
+**mTLS by default** across every service-to-service call. **99.9%** environment consistency —
+shared with the migration this secures, because zero-trust wasn't retrofitted after cutover, it
+was the environment's default state from day one. Automated, continuous compliance checks against
+the regulatory baseline this platform had to meet.
 
-## Outcomes
-
-- **500K+** daily transactions running on the platform
-- **99.9%** environment consistency — drift eliminated (shared outcome with the migration work)
-- **mTLS by default** for all service-to-service traffic
-- Automated compliance checks aligned to financial regulatory standards, running continuously
-
-## Lessons
-
-Rolling out mTLS mesh-wide surfaced services that had been quietly relying on unauthenticated
-internal calls — the useful discipline was making that visible early (via Istio's permissive mode
-first, strict mode second) rather than flipping straight to strict enforcement and breaking
-things blind.
-
-## Tech stack
-
-Istio (service mesh, mTLS), HashiCorp Vault, Kubernetes RBAC, OCI Cloud Guard, AWS GuardDuty,
-Terraform, Ansible
-
-## Related
-
-- [`05-multicloud-banking-migration`](../05-multicloud-banking-migration) — the migration this secures
-- [`03-kubernetes-workload-hardening`](../03-kubernetes-workload-hardening) — the same microsegmentation discipline applied elsewhere
+*Same employer, same period, a different client:
+[`07-oci-compute-cloud-at-customer`](../07-oci-compute-cloud-at-customer).*
