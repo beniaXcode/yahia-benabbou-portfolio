@@ -1,0 +1,42 @@
+# Representative GitHub Actions workflow — turns "onboard a new organization onto the C3
+# platform" into a reviewed pull request with a Terraform plan attached.
+
+name: tenant-onboarding
+
+on:
+  pull_request:
+    paths:
+      - "tenants/**"
+
+jobs:
+  plan:
+    runs-on: [self-hosted, oci-c3]
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Terraform init
+        run: terraform -chdir=tenants init
+
+      - name: Terraform plan
+        id: plan
+        run: terraform -chdir=tenants plan -out=tfplan -var-file="${{ github.event.pull_request.head.ref }}.tfvars"
+
+      - name: Post plan summary to PR
+        uses: actions/github-script@v7
+        with:
+          script: |
+            github.rest.issues.createComment({
+              issue_number: context.issue.number,
+              owner: context.repo.owner,
+              repo: context.repo.repo,
+              body: "Terraform plan generated for this tenant onboarding request. Review before approving."
+            })
+
+  apply-on-merge:
+    if: github.event.pull_request.merged == true
+    needs: plan
+    runs-on: [self-hosted, oci-c3]
+    steps:
+      - uses: actions/checkout@v4
+      - name: Terraform apply
+        run: terraform -chdir=tenants apply -auto-approve tfplan

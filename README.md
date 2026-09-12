@@ -1,51 +1,78 @@
-# Project Portfolio — Yahia Mohamed Benabbou
+# Morocco's First OCI Compute Cloud@Customer Deployment
 
-Ten technical write-ups drawn from real, dated professional experience across three employers
-(Onclusive, OneCloud, OLLMOO) plus one academic capstone. Every fact in every write-up — dates,
-employer, technology, metrics — traces to the résumé and to the case studies already published
-at [profile.nearvic.com](https://profile.nearvic.com). Nothing here is invented.
+**Employer:** OneCloud — Cloud & DevOps Engineer · **Timeframe:** 2025 · **Role:** Delivered
+alongside Oracle's own architects · **Client:** withheld under NDA (multi-tenant platform, 10+
+organizations onboarded)
 
-## Why 10 write-ups from 3 jobs
+## Summary
 
-Real engineering engagements are rarely single-issue — a banking-platform migration is
-simultaneously a cloud-architecture story, a cost story, and a security story. Rather than
-inflate the count with invented side projects, this portfolio follows the same "re-cut by
-discipline" pattern already used on profile.nearvic.com's own security case studies: the same
-real engagements, described through different technical lenses, each one substantial enough to
-stand alone. No two write-ups claim to be a different *client*; several share an employer and a
-timeframe by design, and each one says so.
+The country's first full-rack Oracle Compute Cloud@Customer (C3) installation — a
+fully-managed OCI region running inside the client's own datacenter, for workloads that legally
+could not leave national territory.
 
-| # | Project | Employer | Timeframe |
-|---|---|---|---|
-| 01 | Enterprise CI/CD Platform Modernization | Onclusive | 2026 |
-| 02 | DevSecOps Shift-Left Security Program | Onclusive | 2026 |
-| 03 | Kubernetes Workload Security Hardening | Onclusive | 2026 |
-| 04 | Security Observability & Monitoring Stack | Onclusive | 2026 |
-| 05 | Multi-Cloud Banking Platform Migration | OneCloud | 2024–2025 |
-| 06 | Zero-Trust Architecture for Financial Workloads | OneCloud | 2024–2025 |
-| 07 | Morocco's First OCI Compute Cloud@Customer Deployment | OneCloud | 2025 |
-| 08 | GPU Infrastructure for AI/Inference Workloads | OneCloud | 2025 |
-| 09 | Cloud-Native SaaS Platform Engineering | OLLMOO | 2022–2024 |
-| 10 | Application Security & Observability for the SaaS Platform | OLLMOO | 2022–2024 |
+## The challenge
 
-Each project lives on its own branch (`01-enterprise-cicd-platform`, `02-devsecops-shift-left`,
-etc.), containing a `README.md` (challenge, architecture, implementation, security, outcomes,
-lessons) plus a `scripts/` folder with representative implementation artifacts — Terraform,
-Kubernetes manifests, CI pipeline configs, and similar. These are **illustrative
-re-implementations of the real architecture and approach**, written to demonstrate the same
-patterns used in production — not the actual proprietary client code, which stays under NDA like
-everywhere else on this practice's public-facing work.
+Some workloads have a hard data-residency constraint: the data cannot leave the country, full
+stop. Public-region cloud isn't an option, but the client still needed OCI's actual managed
+service experience — not a bespoke private-cloud build that would drift from Oracle's supported
+platform over time.
 
-## Background
+## Architecture
 
-Bachelor of Engineering, Programmable Services, Systems & Networks (RSSP) — National School of
-Applied Sciences of Marrakesh (ENSA Marrakesh). Capstone project: *"Multi-Cloud Security and
-Automation Platform"* — the academic starting point for the multi-cloud and security-automation
-focus that runs through every project below.
+```mermaid
+flowchart TB
+    subgraph OnPrem[Client datacenter — national territory]
+        C3[OCI Compute Cloud@Customer — full rack]
+        subgraph Tenants[Onboarded organizations]
+            T1[Org 1]
+            T2[Org 2]
+            Tn["Org 10+"]
+        end
+    end
+    Oracle[Oracle architects] -- "joint delivery" --> C3
+    C3 --> T1
+    C3 --> T2
+    C3 --> Tn
+    Terraform[Terraform + OCI DevOps] --> C3
+    GHA[GitHub Actions] --> Terraform
+```
 
-## Links
+## Implementation
 
-- [nearvic.com](https://nearvic.com) — the practice
-- [profile.nearvic.com](https://profile.nearvic.com) — full professional background, credentials,
-  and the original case studies this portfolio expands on
-- [linkedin.com/in/yahia-mohamed-benabbou](https://www.linkedin.com/in/yahia-mohamed-benabbou)
+- **Joint delivery with Oracle**: the physical rack install and initial platform bring-up were
+  done alongside Oracle's own architects — this was a first-of-its-kind deployment in the
+  country, not a repeatable playbook Oracle already had for this market.
+- **Infrastructure as code from day one**: Terraform (`scripts/c3-tenancy.tf`) and OCI DevOps
+  managed tenant provisioning so onboarding the 10+ organizations that followed the initial
+  deployment was a repeatable, reviewed process rather than manual console work per tenant.
+- **CI-driven provisioning**: a GitHub Actions pipeline (`scripts/tenant-onboarding.yml`) turned
+  "onboard a new organization" into a pull request with a Terraform plan attached, not a support
+  ticket.
+
+## Security
+
+Data residency was the entire point of the engagement — every workload on the platform stayed on
+national territory by construction (the hardware itself never left the client's datacenter), not
+by a data-handling policy layered on top of infrastructure that could technically reach outside it.
+
+## Outcomes
+
+- **1st** OCI Compute Cloud@Customer (C3) deployment in the country
+- **10+** organizations onboarded onto the shared platform
+- **100%** data residency maintained — the constraint the whole project existed to satisfy
+
+## Lessons
+
+Being first meant there was no local precedent to lean on for the physical/logical bring-up —
+the most valuable part of working directly alongside Oracle's architects was capturing the
+runbook for that bring-up, since every organization onboarded afterward benefited from a
+process the first deployment had to build from scratch.
+
+## Tech stack
+
+OCI Compute Cloud@Customer, Terraform, Ansible, OCI DevOps, GitHub Actions
+
+## Related
+
+- [`08-gpu-inference-infrastructure`](../08-gpu-inference-infrastructure) — another OneCloud OCI engagement, compute-focused rather than residency-focused
+- [`05-multicloud-banking-migration`](../05-multicloud-banking-migration) — a different OneCloud engagement, same employer and period
