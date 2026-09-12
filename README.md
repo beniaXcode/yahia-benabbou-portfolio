@@ -1,51 +1,82 @@
-# Project Portfolio — Yahia Mohamed Benabbou
+# Application Security & Observability for the SaaS Platform
 
-Ten technical write-ups drawn from real, dated professional experience across three employers
-(Onclusive, OneCloud, OLLMOO) plus one academic capstone. Every fact in every write-up — dates,
-employer, technology, metrics — traces to the résumé and to the case studies already published
-at [profile.nearvic.com](https://profile.nearvic.com). Nothing here is invented.
+**Employer:** OLLMOO (London, UK — remote) — Software Engineer & DevOps Specialist ·
+**Timeframe:** 2022–2024 · **Role:** Application security + observability ·
+**Client:** product team, withheld under NDA
 
-## Why 10 write-ups from 3 jobs
+> Security/observability lens on the same platform covered in
+> [`09-cloud-native-saas-platform`](../09-cloud-native-saas-platform).
 
-Real engineering engagements are rarely single-issue — a banking-platform migration is
-simultaneously a cloud-architecture story, a cost story, and a security story. Rather than
-inflate the count with invented side projects, this portfolio follows the same "re-cut by
-discipline" pattern already used on profile.nearvic.com's own security case studies: the same
-real engagements, described through different technical lenses, each one substantial enough to
-stand alone. No two write-ups claim to be a different *client*; several share an employer and a
-timeframe by design, and each one says so.
+## Summary
 
-| # | Project | Employer | Timeframe |
-|---|---|---|---|
-| 01 | Enterprise CI/CD Platform Modernization | Onclusive | 2026 |
-| 02 | DevSecOps Shift-Left Security Program | Onclusive | 2026 |
-| 03 | Kubernetes Workload Security Hardening | Onclusive | 2026 |
-| 04 | Security Observability & Monitoring Stack | Onclusive | 2026 |
-| 05 | Multi-Cloud Banking Platform Migration | OneCloud | 2024–2025 |
-| 06 | Zero-Trust Architecture for Financial Workloads | OneCloud | 2024–2025 |
-| 07 | Morocco's First OCI Compute Cloud@Customer Deployment | OneCloud | 2025 |
-| 08 | GPU Infrastructure for AI/Inference Workloads | OneCloud | 2025 |
-| 09 | Cloud-Native SaaS Platform Engineering | OLLMOO | 2022–2024 |
-| 10 | Application Security & Observability for the SaaS Platform | OLLMOO | 2022–2024 |
+Where the platform-engineering side of this work (see
+[`09-cloud-native-saas-platform`](../09-cloud-native-saas-platform)) covered infrastructure and
+delivery, this side covered what happens inside the application: authentication, authorization,
+input handling — and, once running, being able to actually find and fix problems fast.
 
-Each project lives on its own branch (`01-enterprise-cicd-platform`, `02-devsecops-shift-left`,
-etc.), containing a `README.md` (challenge, architecture, implementation, security, outcomes,
-lessons) plus a `scripts/` folder with representative implementation artifacts — Terraform,
-Kubernetes manifests, CI pipeline configs, and similar. These are **illustrative
-re-implementations of the real architecture and approach**, written to demonstrate the same
-patterns used in production — not the actual proprietary client code, which stays under NDA like
-everywhere else on this practice's public-facing work.
+## The challenge
 
-## Background
+A cloud-native application split across React, Node.js, and Java microservices needs a
+consistent authentication/authorization story across all of them, and consistent
+application-layer defenses (injection, XSS, CSRF) that don't get skipped under delivery pressure
+when a team is moving fast on product features.
 
-Bachelor of Engineering, Programmable Services, Systems & Networks (RSSP) — National School of
-Applied Sciences of Marrakesh (ENSA Marrakesh). Capstone project: *"Multi-Cloud Security and
-Automation Platform"* — the academic starting point for the multi-cloud and security-automation
-focus that runs through every project below.
+## Architecture
 
-## Links
+```mermaid
+flowchart LR
+    Client[React frontend] -- Bearer token --> Gateway[API entry]
+    Gateway -- validate --> IdP[OAuth 2.0 / OIDC provider]
+    Gateway --> NodeSvc[Node.js service]
+    Gateway --> JavaSvc[Java service]
+    NodeSvc --> Trace[Distributed tracing — AWS X-Ray]
+    JavaSvc --> Trace
+    NodeSvc --> Logs[Centralized logging]
+    JavaSvc --> Logs
+    Trace --> Alert[Real-time alerting]
+    Logs --> Alert
+    Alert --> OnCall[MTTR: find, not guess]
+```
 
-- [nearvic.com](https://nearvic.com) — the practice
-- [profile.nearvic.com](https://profile.nearvic.com) — full professional background, credentials,
-  and the original case studies this portfolio expands on
-- [linkedin.com/in/yahia-mohamed-benabbou](https://www.linkedin.com/in/yahia-mohamed-benabbou)
+## Implementation
+
+- **Token-based authentication**: OAuth 2.0 and OIDC handle authentication across services, with
+  bearer tokens validated at the API entry point rather than each service reimplementing its own
+  auth check (`scripts/auth-middleware.js`).
+- **Role-based authorization**: enforced per service, so a valid token doesn't imply a caller can
+  do anything — each service checks the caller's role against the specific action.
+- **Application-layer defenses**: input validation, injection prevention, output encoding
+  against XSS, and CSRF protection on state-changing routes — the defenses that get dropped
+  under delivery pressure were made part of the shared middleware, not left to each feature
+  developer to remember.
+- **Observability**: distributed tracing via AWS X-Ray plus centralized logging and real-time
+  alerting (`scripts/tracing-config.js`) turned "where did this request fail" from a
+  multi-service log hunt into a single trace.
+
+## Security
+
+This is the application-layer counterpart to the platform/infrastructure security implicit in
+[`09-cloud-native-saas-platform`](../09-cloud-native-saas-platform) — token validation and
+role checks happen inside the application, independent of network-level controls.
+
+## Outcomes
+
+- **OAuth 2.0 and OIDC** token-based auth across all services
+- **−60%** mean time to resolution (MTTR), from the combined tracing/logging/alerting stack
+- Application-layer defenses (injection, XSS, CSRF) built into shared middleware rather than
+  per-feature responsibility
+
+## Lessons
+
+Putting the auth check and the application-layer defenses in shared middleware, rather than
+trusting each service/feature to reimplement them correctly, was the single highest-leverage
+decision here — it meant a new feature got these protections by default instead of by reminder.
+
+## Tech stack
+
+Node.js, Java, React, OAuth 2.0, OIDC, bearer tokens, AWS EKS, AWS X-Ray, GitLab CI
+
+## Related
+
+- [`09-cloud-native-saas-platform`](../09-cloud-native-saas-platform) — the platform this secures and instruments
+- [`04-security-observability-stack`](../04-security-observability-stack) — a similar observability approach at a different employer/scale
