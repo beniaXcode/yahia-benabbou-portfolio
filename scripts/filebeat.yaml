@@ -1,5 +1,4 @@
-# Representative Filebeat configuration — ships Kubernetes audit logs and application logs to
-# the ELK stack, tagging security-relevant sources for separate alerting/dashboarding.
+# Ships audit + application logs to ELK, tagging security-relevant sources for separate alerting.
 
 filebeat.inputs:
   - type: container

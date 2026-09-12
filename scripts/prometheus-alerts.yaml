@@ -1,5 +1,5 @@
-# Representative Prometheus alerting rules — mix of operational and security-relevant signals,
-# illustrative of the pattern used to keep the platform at 99.9% uptime with proactive detection.
+# Alerting rules — operational thresholds alongside security-relevant signals like auth-failure
+# spikes and admission-controller rejection bursts.
 
 groups:
   - name: operational

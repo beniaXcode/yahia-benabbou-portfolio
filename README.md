@@ -1,78 +1,46 @@
-# Security Observability & Monitoring Stack
+# The stack that tells you something's wrong before a customer does
 
-**Employer:** Onclusive — Senior DevSecOps Engineer · **Timeframe:** 2026 · **Role:** Sole
-observability engineer · **Client:** withheld under NDA
+**Onclusive — Senior DevSecOps Engineer, 2026**
 
-> Re-cut of the platform in [`01-enterprise-cicd-platform`](../01-enterprise-cicd-platform),
-> focused on what happens after deployment — detection, not delivery.
+Gates at merge time and admission time catch a lot. They don't catch a slow memory leak heading
+toward an outage, or a service suddenly eating auth failures at ten times its normal rate. Those
+only show up once something is actually running — which means the question isn't "did we block the
+bad thing," it's "will we notice in time."
 
-## Summary
+## What I put together
 
-A monitoring, logging, and security-observability stack built to catch problems — both
-operational and security-relevant — before they become incidents, not just to have dashboards
-that look good after the fact.
-
-## The challenge
-
-Gates at build time and admission time (see
-[`02-devsecops-shift-left`](../02-devsecops-shift-left) and
-[`03-kubernetes-workload-hardening`](../03-kubernetes-workload-hardening)) can't catch everything —
-some problems only show up at runtime: a workload behaving anomalously, a spike in failed auth
-attempts, a slow memory leak heading toward an outage.
-
-## Architecture
+Prometheus for metrics, ELK for logs, both feeding Grafana so an on-call engineer isn't
+context-switching between three tools mid-incident. The part that made this more than a standard
+observability stack was tagging security-relevant sources — auth failures, admission-controller
+rejections from [`03-kubernetes-workload-hardening`](../03-kubernetes-workload-hardening),
+network-policy drops — separately in the log pipeline (`scripts/filebeat.yaml`), and writing
+alert rules (`scripts/prometheus-alerts.yaml`) that treat "ten times the normal auth-failure rate"
+with the same urgency as "error rate above 2%." Most teams monitor for outages and bolt security
+alerting on as an afterthought. I built it as one system from the start, because by the time
+you're correlating an audit log against a metrics dashboard by hand during an actual incident, you
+already lost the time that mattered.
 
 ```mermaid
 flowchart LR
-    Apps[Application & cluster metrics] --> Prom[Prometheus]
-    Logs[Application & audit logs] --> ELK[ELK Stack]
-    Prom --> Grafana[Grafana dashboards]
-    Prom --> Alertmanager[Alertmanager]
+    Metrics[Metrics] --> Prom[Prometheus]
+    Logs[Logs incl. audit + admission events] --> ELK[ELK]
+    Prom --> Grafana[Grafana — one dashboard]
     ELK --> Grafana
-    ELK --> SecAlerts[Security-relevant log alerts]
-    Alertmanager --> OnCall[On-call notification]
-    SecAlerts --> OnCall
-    OnCall --> Response[Incident / threat response]
+    Prom --> Alert[Alertmanager]
+    ELK --> Alert
+    Alert --> OnCall[On-call, one page, one context]
 ```
 
-## Implementation
+## A real tuning problem worth mentioning
 
-- **Metrics**: Prometheus scrapes application and cluster metrics; alerting rules
-  (`scripts/prometheus-alerts.yaml`) cover both operational thresholds (error rate, latency,
-  saturation) and security-relevant signals (abnormal auth failure rate, unexpected outbound
-  connections).
-- **Logs**: the ELK Stack centralizes application and Kubernetes audit logs, with a log-shipping
-  configuration (`scripts/filebeat.yaml`) that tags security-relevant log sources (auth events,
-  admission-controller denials, network-policy drops) for separate alerting.
-- **Dashboards**: Grafana gives a single view across both metrics and logs, so an on-call
-  engineer isn't switching tools mid-incident.
+The security alerts were noisy the first couple of weeks — same failure mode as the scanner
+findings in [`02-devsecops-shift-left`](../02-devsecops-shift-left): an alert nobody trusts gets
+muted, and a muted alert is worse than no alert because it creates false confidence someone's
+watching. I spent real time tuning thresholds against actual baseline traffic before turning on
+paging, which delayed "done" by a couple of weeks and was worth every day of it.
 
-## Security
+## Result
 
-Correlating Kubernetes audit logs, admission-controller denials (from
-[`03-kubernetes-workload-hardening`](../03-kubernetes-workload-hardening)), and application auth
-logs in one place turned "did something just get blocked, and was that expected" from a
-multi-tool investigation into a single dashboard query.
-
-## Outcomes
-
-- **99.9%** platform uptime maintained
-- Proactive threat and incident detection — the resume-stated goal of this stack, achieved by
-  correlating security-relevant signals across metrics and logs rather than treating them as
-  separate concerns
-
-## Lessons
-
-The security-relevant alerts were noisy at first for the same reason the SAST/SCA findings were
-in [`02-devsecops-shift-left`](../02-devsecops-shift-left) — an alert nobody trusts gets muted.
-Tuning thresholds against a few weeks of real baseline traffic before turning on paging mattered
-more than getting the rule logic perfect on day one.
-
-## Tech stack
-
-Prometheus, Grafana, ELK Stack (Elasticsearch, Logstash, Kibana), Alertmanager
-
-## Related
-
-- [`03-kubernetes-workload-hardening`](../03-kubernetes-workload-hardening) — source of the admission/network-policy events this stack correlates
-- [`06-zero-trust-financial-workloads`](../06-zero-trust-financial-workloads) — a similar observability approach applied to a different, regulated environment
+**99.9%** platform uptime, held steady, with detection that's proactive rather than
+"we found out when someone complained." That's the actual point of this stack — not a dashboard
+that looks impressive, one that gets someone to the right answer before it's a bigger problem.
