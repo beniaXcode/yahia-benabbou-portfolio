@@ -1,51 +1,80 @@
-# Project Portfolio — Yahia Mohamed Benabbou
+# DevSecOps Shift-Left Security Program
 
-Ten technical write-ups drawn from real, dated professional experience across three employers
-(Onclusive, OneCloud, OLLMOO) plus one academic capstone. Every fact in every write-up — dates,
-employer, technology, metrics — traces to the résumé and to the case studies already published
-at [profile.nearvic.com](https://profile.nearvic.com). Nothing here is invented.
+**Employer:** Onclusive — Senior DevSecOps Engineer · **Timeframe:** 2026 · **Role:** Program
+owner, worked directly with development teams · **Client:** withheld under NDA
 
-## Why 10 write-ups from 3 jobs
+> Re-cut of the same platform in [`01-enterprise-cicd-platform`](../01-enterprise-cicd-platform),
+> viewed through the security-culture and process lens rather than the pipeline-engineering lens.
 
-Real engineering engagements are rarely single-issue — a banking-platform migration is
-simultaneously a cloud-architecture story, a cost story, and a security story. Rather than
-inflate the count with invented side projects, this portfolio follows the same "re-cut by
-discipline" pattern already used on profile.nearvic.com's own security case studies: the same
-real engagements, described through different technical lenses, each one substantial enough to
-stand alone. No two write-ups claim to be a different *client*; several share an employer and a
-timeframe by design, and each one says so.
+## Summary
 
-| # | Project | Employer | Timeframe |
-|---|---|---|---|
-| 01 | Enterprise CI/CD Platform Modernization | Onclusive | 2026 |
-| 02 | DevSecOps Shift-Left Security Program | Onclusive | 2026 |
-| 03 | Kubernetes Workload Security Hardening | Onclusive | 2026 |
-| 04 | Security Observability & Monitoring Stack | Onclusive | 2026 |
-| 05 | Multi-Cloud Banking Platform Migration | OneCloud | 2024–2025 |
-| 06 | Zero-Trust Architecture for Financial Workloads | OneCloud | 2024–2025 |
-| 07 | Morocco's First OCI Compute Cloud@Customer Deployment | OneCloud | 2025 |
-| 08 | GPU Infrastructure for AI/Inference Workloads | OneCloud | 2025 |
-| 09 | Cloud-Native SaaS Platform Engineering | OLLMOO | 2022–2024 |
-| 10 | Application Security & Observability for the SaaS Platform | OLLMOO | 2022–2024 |
+Moving security left meant more than adding scanners to a pipeline — it meant giving development
+teams the guidance, tooling, and workflow to act on findings themselves, rather than routing
+everything through a security team as a bottleneck.
 
-Each project lives on its own branch (`01-enterprise-cicd-platform`, `02-devsecops-shift-left`,
-etc.), containing a `README.md` (challenge, architecture, implementation, security, outcomes,
-lessons) plus a `scripts/` folder with representative implementation artifacts — Terraform,
-Kubernetes manifests, CI pipeline configs, and similar. These are **illustrative
-re-implementations of the real architecture and approach**, written to demonstrate the same
-patterns used in production — not the actual proprietary client code, which stays under NDA like
-everywhere else on this practice's public-facing work.
+## The challenge
 
-## Background
+Security findings were being generated (by SAST/SCA/secrets scanners) faster than teams could
+triage them without guidance. A scanner that produces noise nobody acts on is worse than no
+scanner — it trains people to ignore the tool.
 
-Bachelor of Engineering, Programmable Services, Systems & Networks (RSSP) — National School of
-Applied Sciences of Marrakesh (ENSA Marrakesh). Capstone project: *"Multi-Cloud Security and
-Automation Platform"* — the academic starting point for the multi-cloud and security-automation
-focus that runs through every project below.
+## Architecture
 
-## Links
+```mermaid
+flowchart TD
+    Code[Developer commits code] --> Precommit[Pre-commit: secrets scan]
+    Precommit --> PR[Pull request]
+    PR --> SAST[SAST — SonarQube]
+    PR --> SCA[SCA — dependency scan]
+    SAST --> Triage{Severity threshold}
+    SCA --> Triage
+    Triage -- Critical/High --> Block[Blocks merge, routed to owning team]
+    Triage -- Medium/Low --> Backlog[Tracked, not blocking]
+    Block --> ThreatModel[Threat modeling session if architectural]
+    ThreatModel --> Remediation[Remediation workflow]
+    Remediation --> Code
+```
 
-- [nearvic.com](https://nearvic.com) — the practice
-- [profile.nearvic.com](https://profile.nearvic.com) — full professional background, credentials,
-  and the original case studies this portfolio expands on
-- [linkedin.com/in/yahia-mohamed-benabbou](https://www.linkedin.com/in/yahia-mohamed-benabbou)
+## Implementation
+
+- **Secrets scanning at commit time**, not just in CI — a pre-commit hook (`scripts/pre-commit-config.yaml`)
+  catches accidental credential commits before they ever reach a shared branch.
+- **Secure coding guidance** delivered as concrete, language-specific checklists tied to the
+  SAST rule categories actually firing, not a generic security-policy document nobody reads.
+- **Threat modeling** for architecturally significant changes (new service boundaries, new
+  external integrations) — lightweight, using a structured template
+  (`scripts/threat-model-template.md`) rather than a heavyweight formal process.
+- **Cross-functional remediation workflow**: findings above a severity threshold auto-create a
+  tracked issue assigned to the owning team with a service-level agreement, not a shared
+  security-team backlog.
+
+## Security
+
+This program is the process layer on top of the technical gates described in
+[`01-enterprise-cicd-platform`](../01-enterprise-cicd-platform) — the gates enforce the policy,
+this program is what makes the policy something teams can actually act on.
+
+## Outcomes
+
+- **+60%** deployment frequency maintained *while* enforcing security policy at every stage —
+  the point of shift-left is that security stopped being a tax on velocity
+- **−45%** production incidents (shared outcome with the CI/CD platform work, since the two are
+  the same underlying effort)
+- Findings triaged and remediated by owning teams directly, rather than queued through a central
+  security backlog
+
+## Lessons
+
+The threshold-based routing (block on Critical/High, track-not-block on Medium/Low) mattered more
+than any individual tool choice — a program that blocks on every finding regardless of severity
+teaches teams to find workarounds, not to fix the actual risk.
+
+## Tech stack
+
+SonarQube, Trivy (SCA/secrets), HashiCorp Vault, OPA Gatekeeper, MITRE ATT&CK (threat-modeling
+reference), CIS Benchmarks, NIST, ISO 27001/27005 (fundamentals)
+
+## Related
+
+- [`01-enterprise-cicd-platform`](../01-enterprise-cicd-platform) — the pipeline this program's gates run inside
+- [`03-kubernetes-workload-hardening`](../03-kubernetes-workload-hardening) — the runtime-security counterpart
