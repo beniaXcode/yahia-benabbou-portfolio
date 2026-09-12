@@ -1,6 +1,5 @@
-# Representative Terraform module for onboarding a tenant organization onto the shared C3
-# platform — illustrative of the repeatable pattern used for the 10+ organizations onboarded,
-# not the literal client configuration.
+# Onboarding pattern for a tenant organization onto the shared C3 platform — the repeatable
+# process built after the first, manual, Oracle-assisted bring-up.
 
 terraform {
   required_version = ">= 1.5"

@@ -1,78 +1,49 @@
-# Morocco's First OCI Compute Cloud@Customer Deployment
+# The first OCI rack of its kind in the country, installed alongside Oracle's own team
 
-**Employer:** OneCloud — Cloud & DevOps Engineer · **Timeframe:** 2025 · **Role:** Delivered
-alongside Oracle's own architects · **Client:** withheld under NDA (multi-tenant platform, 10+
-organizations onboarded)
+**OneCloud — Cloud & DevOps Engineer, 2025**
 
-## Summary
+Some workloads have a data-residency requirement that isn't negotiable: the data does not leave
+the country. Public-region cloud is off the table by definition, but the client still wanted the
+real OCI experience — managed services, not a bespoke private-cloud build that some team would be
+patching by hand in three years because it drifted from anything Oracle actually supports.
 
-The country's first full-rack Oracle Compute Cloud@Customer (C3) installation — a
-fully-managed OCI region running inside the client's own datacenter, for workloads that legally
-could not leave national territory.
+The answer was Oracle Compute Cloud@Customer — a full OCI region, running as hardware inside the
+client's own datacenter. This was the first C3 installation in the country, which meant there was
+no local playbook to follow. Oracle sent their own architects for the physical bring-up, and I
+worked the deployment alongside them.
 
-## The challenge
+## What I made sure didn't stay tribal knowledge
 
-Some workloads have a hard data-residency constraint: the data cannot leave the country, full
-stop. Public-region cloud isn't an option, but the client still needed OCI's actual managed
-service experience — not a bespoke private-cloud build that would drift from Oracle's supported
-platform over time.
-
-## Architecture
+Getting the rack live once, with Oracle standing next to me, isn't the hard part in the long run.
+The hard part is what happens when the tenth organization wants onto the platform and there's no
+Oracle architect flying in for that one. I put Terraform (`scripts/c3-tenancy.tf`) and OCI DevOps
+behind every tenant onboarding from day one, and wired a GitHub Actions pipeline
+(`scripts/tenant-onboarding.yml`) so bringing a new organization onto the shared platform is a pull
+request with a Terraform plan attached — reviewable, repeatable — not a support ticket that lands
+on whoever's free.
 
 ```mermaid
 flowchart TB
-    subgraph OnPrem[Client datacenter — national territory]
-        C3[OCI Compute Cloud@Customer — full rack]
-        subgraph Tenants[Onboarded organizations]
-            T1[Org 1]
-            T2[Org 2]
-            Tn["Org 10+"]
-        end
+    subgraph DC[Client datacenter — national territory, by construction]
+        C3[OCI Compute Cloud@Customer]
+        Orgs["10+ onboarded organizations"]
     end
-    Oracle[Oracle architects] -- "joint delivery" --> C3
-    C3 --> T1
-    C3 --> T2
-    C3 --> Tn
-    Terraform[Terraform + OCI DevOps] --> C3
-    GHA[GitHub Actions] --> Terraform
+    Oracle[Oracle architects] -- "joint bring-up" --> C3
+    C3 --> Orgs
+    PR[Pull request + Terraform plan] --> C3
 ```
 
-## Implementation
+## Why "first" actually mattered here
 
-- **Joint delivery with Oracle**: the physical rack install and initial platform bring-up were
-  done alongside Oracle's own architects — this was a first-of-its-kind deployment in the
-  country, not a repeatable playbook Oracle already had for this market.
-- **Infrastructure as code from day one**: Terraform (`scripts/c3-tenancy.tf`) and OCI DevOps
-  managed tenant provisioning so onboarding the 10+ organizations that followed the initial
-  deployment was a repeatable, reviewed process rather than manual console work per tenant.
-- **CI-driven provisioning**: a GitHub Actions pipeline (`scripts/tenant-onboarding.yml`) turned
-  "onboard a new organization" into a pull request with a Terraform plan attached, not a support
-  ticket.
+Being first meant capturing the bring-up runbook *while doing it*, not after — every organization
+onboarded since has benefited from decisions I only got to make once, under a deadline, next to
+people who'd done this in other countries but never this one.
 
-## Security
+## Result
 
-Data residency was the entire point of the engagement — every workload on the platform stayed on
-national territory by construction (the hardware itself never left the client's datacenter), not
-by a data-handling policy layered on top of infrastructure that could technically reach outside it.
+**1st** C3 deployment in the country. **10+** organizations onboarded onto one shared platform.
+**100%** data residency held — which was the entire point, and it held by construction, because
+the hardware itself never left the building, not because of a policy someone had to remember to
+enforce.
 
-## Outcomes
-
-- **1st** OCI Compute Cloud@Customer (C3) deployment in the country
-- **10+** organizations onboarded onto the shared platform
-- **100%** data residency maintained — the constraint the whole project existed to satisfy
-
-## Lessons
-
-Being first meant there was no local precedent to lean on for the physical/logical bring-up —
-the most valuable part of working directly alongside Oracle's architects was capturing the
-runbook for that bring-up, since every organization onboarded afterward benefited from a
-process the first deployment had to build from scratch.
-
-## Tech stack
-
-OCI Compute Cloud@Customer, Terraform, Ansible, OCI DevOps, GitHub Actions
-
-## Related
-
-- [`08-gpu-inference-infrastructure`](../08-gpu-inference-infrastructure) — another OneCloud OCI engagement, compute-focused rather than residency-focused
-- [`05-multicloud-banking-migration`](../05-multicloud-banking-migration) — a different OneCloud engagement, same employer and period
+*Different client, same employer and period: [`08-gpu-inference-infrastructure`](../08-gpu-inference-infrastructure).*

@@ -1,5 +1,4 @@
-# Representative GitHub Actions workflow — turns "onboard a new organization onto the C3
-# platform" into a reviewed pull request with a Terraform plan attached.
+# Turns "onboard a new organization" into a pull request with a Terraform plan attached.
 
 name: tenant-onboarding
 
