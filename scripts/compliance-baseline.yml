@@ -1,0 +1,58 @@
+# Representative Ansible playbook — applies a consistent compliance baseline to every
+# provisioned instance, the mechanism that eliminated configuration drift during migration.
+
+- name: Apply financial-services compliance baseline
+  hosts: banking_platform
+  become: true
+  vars:
+    required_packages:
+      - auditd
+      - aide
+      - fail2ban
+
+  tasks:
+    - name: Ensure required security packages are installed
+      package:
+        name: "{{ required_packages }}"
+        state: present
+
+    - name: Enforce CIS-aligned SSH configuration
+      template:
+        src: templates/sshd_config.j2
+        dest: /etc/ssh/sshd_config
+        owner: root
+        group: root
+        mode: "0600"
+      notify: restart sshd
+
+    - name: Enable and configure auditd for compliance logging
+      template:
+        src: templates/audit.rules.j2
+        dest: /etc/audit/rules.d/compliance.rules
+      notify: restart auditd
+
+    - name: Ensure filesystem integrity monitoring baseline exists
+      command: aide --init
+      args:
+        creates: /var/lib/aide/aide.db.new.gz
+
+    - name: Enforce automatic security updates
+      template:
+        src: templates/unattended-upgrades.j2
+        dest: /etc/apt/apt.conf.d/50unattended-upgrades
+
+    - name: Verify baseline compliance and report drift
+      script: scripts/check_compliance_baseline.sh
+      register: compliance_check
+      failed_when: compliance_check.rc != 0
+      changed_when: false
+
+  handlers:
+    - name: restart sshd
+      service:
+        name: sshd
+        state: restarted
+    - name: restart auditd
+      service:
+        name: auditd
+        state: restarted

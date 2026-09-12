@@ -1,51 +1,90 @@
-# Project Portfolio — Yahia Mohamed Benabbou
+# Multi-Cloud Banking Platform Migration
 
-Ten technical write-ups drawn from real, dated professional experience across three employers
-(Onclusive, OneCloud, OLLMOO) plus one academic capstone. Every fact in every write-up — dates,
-employer, technology, metrics — traces to the résumé and to the case studies already published
-at [profile.nearvic.com](https://profile.nearvic.com). Nothing here is invented.
+**Employer:** OneCloud — Cloud & DevOps Engineer · **Timeframe:** 2024–2025 · **Role:** Led the
+migration end to end · **Client:** banking/fintech client, withheld under NDA
 
-## Why 10 write-ups from 3 jobs
+> Re-cut through a security lens in [`06-zero-trust-financial-workloads`](../06-zero-trust-financial-workloads).
 
-Real engineering engagements are rarely single-issue — a banking-platform migration is
-simultaneously a cloud-architecture story, a cost story, and a security story. Rather than
-inflate the count with invented side projects, this portfolio follows the same "re-cut by
-discipline" pattern already used on profile.nearvic.com's own security case studies: the same
-real engagements, described through different technical lenses, each one substantial enough to
-stand alone. No two write-ups claim to be a different *client*; several share an employer and a
-timeframe by design, and each one says so.
+## Summary
 
-| # | Project | Employer | Timeframe |
-|---|---|---|---|
-| 01 | Enterprise CI/CD Platform Modernization | Onclusive | 2026 |
-| 02 | DevSecOps Shift-Left Security Program | Onclusive | 2026 |
-| 03 | Kubernetes Workload Security Hardening | Onclusive | 2026 |
-| 04 | Security Observability & Monitoring Stack | Onclusive | 2026 |
-| 05 | Multi-Cloud Banking Platform Migration | OneCloud | 2024–2025 |
-| 06 | Zero-Trust Architecture for Financial Workloads | OneCloud | 2024–2025 |
-| 07 | Morocco's First OCI Compute Cloud@Customer Deployment | OneCloud | 2025 |
-| 08 | GPU Infrastructure for AI/Inference Workloads | OneCloud | 2025 |
-| 09 | Cloud-Native SaaS Platform Engineering | OLLMOO | 2022–2024 |
-| 10 | Application Security & Observability for the SaaS Platform | OLLMOO | 2022–2024 |
+End-to-end migration of core banking applications off on-premises infrastructure (including
+VMware estates) onto a multi-cloud architecture across OCI and AWS — a live financial system,
+serving 500K+ daily transactions, in an environment where an outage is a regulatory event, not
+just an inconvenience.
 
-Each project lives on its own branch (`01-enterprise-cicd-platform`, `02-devsecops-shift-left`,
-etc.), containing a `README.md` (challenge, architecture, implementation, security, outcomes,
-lessons) plus a `scripts/` folder with representative implementation artifacts — Terraform,
-Kubernetes manifests, CI pipeline configs, and similar. These are **illustrative
-re-implementations of the real architecture and approach**, written to demonstrate the same
-patterns used in production — not the actual proprietary client code, which stays under NDA like
-everywhere else on this practice's public-facing work.
+## The challenge
 
-## Background
+On-premises infrastructure for a regulated financial workload doesn't move like a typical
+lift-and-shift: the migration had to preserve data residency and compliance posture throughout,
+with cutover runbooks precise enough that an outage during the move itself wasn't an option.
 
-Bachelor of Engineering, Programmable Services, Systems & Networks (RSSP) — National School of
-Applied Sciences of Marrakesh (ENSA Marrakesh). Capstone project: *"Multi-Cloud Security and
-Automation Platform"* — the academic starting point for the multi-cloud and security-automation
-focus that runs through every project below.
+## Architecture
 
-## Links
+```mermaid
+flowchart TB
+    subgraph OnPrem[On-premises — VMware]
+        VM1[Core banking app]
+        VM2[Database tier]
+    end
+    subgraph Cloud[Multi-cloud landing zone]
+        subgraph OCI[OCI]
+            OKE[OCI Kubernetes Engine]
+            OCIDB[Managed database]
+        end
+        subgraph AWS[AWS]
+            EKS[Amazon EKS]
+            AWSDB[RDS]
+        end
+    end
+    VM1 -- "cutover runbook, staged traffic shift" --> OKE
+    VM1 -- "cutover runbook, staged traffic shift" --> EKS
+    VM2 -- "data migration, verified parity" --> OCIDB
+    VM2 -- "data migration, verified parity" --> AWSDB
+    OKE --> Terraform[Terraform modules — landing zone as code]
+    EKS --> Terraform
+    Terraform --> Ansible[Ansible — configuration & compliance]
+```
 
-- [nearvic.com](https://nearvic.com) — the practice
-- [profile.nearvic.com](https://profile.nearvic.com) — full professional background, credentials,
-  and the original case studies this portfolio expands on
-- [linkedin.com/in/yahia-mohamed-benabbou](https://www.linkedin.com/in/yahia-mohamed-benabbou)
+## Implementation
+
+- **Landing zone as code**: Terraform modules (`scripts/landing-zone.tf`) defined the target
+  network topology, IAM boundaries, and compute footprint on both OCI and AWS before any
+  workload moved — the destination existed and was validated ahead of cutover, not built
+  reactively during it.
+- **Configuration automation**: Ansible playbooks (`scripts/compliance-baseline.yml`) applied a
+  consistent compliance baseline across every provisioned instance, eliminating the
+  configuration drift that on-premises estates had accumulated over years.
+- **Cutover runbooks**: staged, reversible traffic shifts rather than a single big-bang cutover —
+  each stage had a defined rollback path.
+
+## Security
+
+Migration ran alongside the zero-trust and compliance-automation work covered in
+[`06-zero-trust-financial-workloads`](../06-zero-trust-financial-workloads) — the destination
+environment wasn't just "the same app on new infrastructure," it enforced identity-based access
+and automated compliance checks from the day it went live.
+
+## Outcomes
+
+- **500K+** daily transactions served by the migrated platform
+- **−35%** infrastructure cost after migration
+- **99.9%** availability held through the cutover itself
+- **0** unplanned outages attributable to the migration
+- **−70%** deployment/provisioning time via the Terraform + Ansible automation
+- **99.9%** environment consistency — configuration drift eliminated
+
+## Lessons
+
+The staged, reversible cutover plan cost more up-front design time than a big-bang approach would
+have, but on a system where 500K+ daily transactions and regulatory scrutiny are both real, the
+ability to roll back a single stage rather than the whole migration was worth every hour spent
+planning it.
+
+## Tech stack
+
+Terraform, Ansible, Kubernetes (OKE, EKS), OCI, AWS, VMware (source estate), Prometheus, Grafana, Loki
+
+## Related
+
+- [`06-zero-trust-financial-workloads`](../06-zero-trust-financial-workloads) — the security architecture of the destination environment
+- [`07-oci-compute-cloud-at-customer`](../07-oci-compute-cloud-at-customer) — a related OneCloud engagement for a different data-residency constraint
