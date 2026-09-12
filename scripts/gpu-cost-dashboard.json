@@ -1,0 +1,29 @@
+{
+  "_comment": "Representative OCI Monitoring dashboard definition (trimmed) — per-workload GPU utilization and cost attribution, the mechanism referenced in the README.",
+  "displayName": "GPU Fleet — Per-Workload Attribution",
+  "widgets": [
+    {
+      "title": "GPU utilization by workload label",
+      "queryType": "MQL",
+      "query": "GpuUtilization[1m]{resourceDisplayName != \"\"}.groupBy(workload).mean()",
+      "visualization": "line"
+    },
+    {
+      "title": "GPU-hours consumed, last 30 days, by team",
+      "queryType": "MQL",
+      "query": "GpuActiveTime[1d]{}.groupBy(team).sum()",
+      "visualization": "bar"
+    },
+    {
+      "title": "Idle GPU nodes (utilization < 10%, > 15 min)",
+      "queryType": "MQL",
+      "query": "GpuUtilization[15m]{}.less(0.10)",
+      "visualization": "table",
+      "alerting": {
+        "enabled": true,
+        "threshold": "any true for 15m",
+        "notify": "platform-cost-alerts"
+      }
+    }
+  ]
+}

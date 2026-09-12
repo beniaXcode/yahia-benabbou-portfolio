@@ -1,0 +1,59 @@
+# Representative Kubernetes cluster-autoscaler configuration for a GPU node pool — scales out
+# only when GPU-requesting pods are pending, scales in aggressively once idle.
+
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: cluster-autoscaler-gpu-pool
+  namespace: kube-system
+data:
+  nodes.max: "20"
+  nodes.min: "0"
+  scale-down-delay-after-add: "5m"
+  scale-down-unneeded-time: "3m"
+  scale-down-utilization-threshold: "0.3"
+---
+# Node pool definition (illustrative) — tainted so only GPU-requesting workloads schedule here.
+apiVersion: v1
+kind: Node
+metadata:
+  labels:
+    node-pool: gpu-inference
+    nvidia.com/gpu.present: "true"
+spec:
+  taints:
+    - key: nvidia.com/gpu
+      value: "true"
+      effect: NoSchedule
+---
+# Example inference workload requesting GPU and tolerating the taint.
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: vllm-inference-server
+  namespace: gpu-workloads
+spec:
+  replicas: 2
+  selector:
+    matchLabels:
+      app: vllm-inference-server
+  template:
+    metadata:
+      labels:
+        app: vllm-inference-server
+    spec:
+      tolerations:
+        - key: nvidia.com/gpu
+          operator: Equal
+          value: "true"
+          effect: NoSchedule
+      nodeSelector:
+        node-pool: gpu-inference
+      containers:
+        - name: vllm
+          image: vllm/vllm-openai:latest
+          resources:
+            limits:
+              nvidia.com/gpu: 1
+            requests:
+              nvidia.com/gpu: 1

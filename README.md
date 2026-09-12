@@ -1,51 +1,78 @@
-# Project Portfolio — Yahia Mohamed Benabbou
+# GPU Infrastructure for AI/Inference Workloads
 
-Ten technical write-ups drawn from real, dated professional experience across three employers
-(Onclusive, OneCloud, OLLMOO) plus one academic capstone. Every fact in every write-up — dates,
-employer, technology, metrics — traces to the résumé and to the case studies already published
-at [profile.nearvic.com](https://profile.nearvic.com). Nothing here is invented.
+**Employer:** OneCloud — Cloud & DevOps Engineer · **Timeframe:** 2025 · **Role:** Sole
+infrastructure engineer for the GPU platform · **Client:** withheld under NDA
 
-## Why 10 write-ups from 3 jobs
+## Summary
 
-Real engineering engagements are rarely single-issue — a banking-platform migration is
-simultaneously a cloud-architecture story, a cost story, and a security story. Rather than
-inflate the count with invented side projects, this portfolio follows the same "re-cut by
-discipline" pattern already used on profile.nearvic.com's own security case studies: the same
-real engagements, described through different technical lenses, each one substantial enough to
-stand alone. No two write-ups claim to be a different *client*; several share an employer and a
-timeframe by design, and each one says so.
+An autoscaled, multi-node NVIDIA GPU fleet on OCI for rendering, simulation, and large-model
+inference — built so that expensive silicon is accountable per workload, not a shared cost
+nobody can attribute.
 
-| # | Project | Employer | Timeframe |
-|---|---|---|---|
-| 01 | Enterprise CI/CD Platform Modernization | Onclusive | 2026 |
-| 02 | DevSecOps Shift-Left Security Program | Onclusive | 2026 |
-| 03 | Kubernetes Workload Security Hardening | Onclusive | 2026 |
-| 04 | Security Observability & Monitoring Stack | Onclusive | 2026 |
-| 05 | Multi-Cloud Banking Platform Migration | OneCloud | 2024–2025 |
-| 06 | Zero-Trust Architecture for Financial Workloads | OneCloud | 2024–2025 |
-| 07 | Morocco's First OCI Compute Cloud@Customer Deployment | OneCloud | 2025 |
-| 08 | GPU Infrastructure for AI/Inference Workloads | OneCloud | 2025 |
-| 09 | Cloud-Native SaaS Platform Engineering | OLLMOO | 2022–2024 |
-| 10 | Application Security & Observability for the SaaS Platform | OLLMOO | 2022–2024 |
+## The challenge
 
-Each project lives on its own branch (`01-enterprise-cicd-platform`, `02-devsecops-shift-left`,
-etc.), containing a `README.md` (challenge, architecture, implementation, security, outcomes,
-lessons) plus a `scripts/` folder with representative implementation artifacts — Terraform,
-Kubernetes manifests, CI pipeline configs, and similar. These are **illustrative
-re-implementations of the real architecture and approach**, written to demonstrate the same
-patterns used in production — not the actual proprietary client code, which stays under NDA like
-everywhere else on this practice's public-facing work.
+GPU capacity is expensive and, unmanaged, easy to under-utilize or over-provision — the platform
+needed to scale a GPU fleet up and down with real demand, tune network/topology for the
+workloads actually running (inference has different bandwidth/latency needs than training or
+rendering), and make cost attributable per workload rather than a lump line item.
 
-## Background
+## Architecture
 
-Bachelor of Engineering, Programmable Services, Systems & Networks (RSSP) — National School of
-Applied Sciences of Marrakesh (ENSA Marrakesh). Capstone project: *"Multi-Cloud Security and
-Automation Platform"* — the academic starting point for the multi-cloud and security-automation
-focus that runs through every project below.
+```mermaid
+flowchart TB
+    subgraph OCI[OCI]
+        GPUShapes[OCI GPU shapes — NVIDIA]
+        K8s[Kubernetes]
+        Monitoring[OCI Monitoring]
+    end
+    Workloads[Inference / rendering / simulation jobs] --> Scheduler[GPU-aware scheduler]
+    Scheduler --> GPUShapes
+    GPUShapes --> K8s
+    K8s --> Autoscale[Autoscaling — node pool scale-out/in on demand]
+    K8s --> vLLM[vLLM — large-model inference serving]
+    Monitoring --> Attribution[Per-workload GPU utilization & cost attribution]
+    Attribution -.-> Workloads
+```
 
-## Links
+## Implementation
 
-- [nearvic.com](https://nearvic.com) — the practice
-- [profile.nearvic.com](https://profile.nearvic.com) — full professional background, credentials,
-  and the original case studies this portfolio expands on
-- [linkedin.com/in/yahia-mohamed-benabbou](https://www.linkedin.com/in/yahia-mohamed-benabbou)
+- **Autoscaled GPU node pools**: Kubernetes cluster autoscaler tuned specifically for GPU node
+  pools (`scripts/gpu-nodepool-autoscaling.yaml`) — GPU nodes scale out only when GPU-requesting
+  workloads are actually pending, and scale back in aggressively once idle, since GPU capacity
+  sitting idle is the most expensive kind of idle capacity.
+- **Inference serving**: vLLM handles large-model inference serving on top of the GPU-scheduled
+  Kubernetes workloads, tuned for the throughput/latency profile the actual models needed.
+- **Topology-aware scheduling**: multi-node jobs get GPU topology hints so intra-job
+  communication stays on the fastest available interconnect rather than crossing unnecessary
+  network hops.
+- **Per-workload cost attribution**: OCI Monitoring dashboards (`scripts/gpu-cost-dashboard.json`)
+  tag GPU utilization by workload/team, turning "the GPU bill" from a shared unknown into a
+  per-team, per-workload number.
+
+## Security
+
+Provisioned within an ISO 27001 / PCI DSS certified facility — the physical and compliance
+posture of the underlying OCI infrastructure was a given constraint this platform was built on
+top of, not something this project itself implemented.
+
+## Outcomes
+
+- **Autoscaled, multi-node GPU fleet** running rendering, simulation, and large-model inference
+  workloads
+- **Per-workload cost attribution and tuning** — expensive silicon made accountable
+- Delivered inside an **ISO 27001 / PCI DSS certified** facility
+
+## Lessons
+
+Topology tuning mattered more than raw GPU count for multi-node inference throughput — a job
+spread across nodes with a bad interconnect path performed worse than the same job on fewer,
+better-placed GPUs, which reframed the scaling conversation from "add more GPUs" to "place them
+correctly first."
+
+## Tech stack
+
+OCI GPU shapes, NVIDIA, vLLM, Kubernetes, Terraform, OCI Monitoring
+
+## Related
+
+- [`07-oci-compute-cloud-at-customer`](../07-oci-compute-cloud-at-customer) — another OneCloud OCI engagement, same period
