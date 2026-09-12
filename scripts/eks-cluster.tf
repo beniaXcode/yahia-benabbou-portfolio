@@ -1,5 +1,4 @@
-# Representative Terraform for the EKS cluster and supporting resources — illustrative of the
-# pattern used to support staging-to-production promotion, not the literal product's config.
+# EKS cluster + supporting AWS resources, parameterized for clean staging-to-production promotion.
 
 terraform {
   required_version = ">= 1.5"

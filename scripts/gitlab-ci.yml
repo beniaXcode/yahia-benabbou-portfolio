@@ -1,5 +1,4 @@
-# Representative GitLab CI pipeline — build, test, and promote from staging to production,
-# illustrative of the automated testing workflow introduced on this codebase.
+# Build, test, then promote staging to production as a manual gate.
 
 stages:
   - build
