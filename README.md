@@ -1,51 +1,78 @@
-# Project Portfolio — Yahia Mohamed Benabbou
+# Security Observability & Monitoring Stack
 
-Ten technical write-ups drawn from real, dated professional experience across three employers
-(Onclusive, OneCloud, OLLMOO) plus one academic capstone. Every fact in every write-up — dates,
-employer, technology, metrics — traces to the résumé and to the case studies already published
-at [profile.nearvic.com](https://profile.nearvic.com). Nothing here is invented.
+**Employer:** Onclusive — Senior DevSecOps Engineer · **Timeframe:** 2026 · **Role:** Sole
+observability engineer · **Client:** withheld under NDA
 
-## Why 10 write-ups from 3 jobs
+> Re-cut of the platform in [`01-enterprise-cicd-platform`](../01-enterprise-cicd-platform),
+> focused on what happens after deployment — detection, not delivery.
 
-Real engineering engagements are rarely single-issue — a banking-platform migration is
-simultaneously a cloud-architecture story, a cost story, and a security story. Rather than
-inflate the count with invented side projects, this portfolio follows the same "re-cut by
-discipline" pattern already used on profile.nearvic.com's own security case studies: the same
-real engagements, described through different technical lenses, each one substantial enough to
-stand alone. No two write-ups claim to be a different *client*; several share an employer and a
-timeframe by design, and each one says so.
+## Summary
 
-| # | Project | Employer | Timeframe |
-|---|---|---|---|
-| 01 | Enterprise CI/CD Platform Modernization | Onclusive | 2026 |
-| 02 | DevSecOps Shift-Left Security Program | Onclusive | 2026 |
-| 03 | Kubernetes Workload Security Hardening | Onclusive | 2026 |
-| 04 | Security Observability & Monitoring Stack | Onclusive | 2026 |
-| 05 | Multi-Cloud Banking Platform Migration | OneCloud | 2024–2025 |
-| 06 | Zero-Trust Architecture for Financial Workloads | OneCloud | 2024–2025 |
-| 07 | Morocco's First OCI Compute Cloud@Customer Deployment | OneCloud | 2025 |
-| 08 | GPU Infrastructure for AI/Inference Workloads | OneCloud | 2025 |
-| 09 | Cloud-Native SaaS Platform Engineering | OLLMOO | 2022–2024 |
-| 10 | Application Security & Observability for the SaaS Platform | OLLMOO | 2022–2024 |
+A monitoring, logging, and security-observability stack built to catch problems — both
+operational and security-relevant — before they become incidents, not just to have dashboards
+that look good after the fact.
 
-Each project lives on its own branch (`01-enterprise-cicd-platform`, `02-devsecops-shift-left`,
-etc.), containing a `README.md` (challenge, architecture, implementation, security, outcomes,
-lessons) plus a `scripts/` folder with representative implementation artifacts — Terraform,
-Kubernetes manifests, CI pipeline configs, and similar. These are **illustrative
-re-implementations of the real architecture and approach**, written to demonstrate the same
-patterns used in production — not the actual proprietary client code, which stays under NDA like
-everywhere else on this practice's public-facing work.
+## The challenge
 
-## Background
+Gates at build time and admission time (see
+[`02-devsecops-shift-left`](../02-devsecops-shift-left) and
+[`03-kubernetes-workload-hardening`](../03-kubernetes-workload-hardening)) can't catch everything —
+some problems only show up at runtime: a workload behaving anomalously, a spike in failed auth
+attempts, a slow memory leak heading toward an outage.
 
-Bachelor of Engineering, Programmable Services, Systems & Networks (RSSP) — National School of
-Applied Sciences of Marrakesh (ENSA Marrakesh). Capstone project: *"Multi-Cloud Security and
-Automation Platform"* — the academic starting point for the multi-cloud and security-automation
-focus that runs through every project below.
+## Architecture
 
-## Links
+```mermaid
+flowchart LR
+    Apps[Application & cluster metrics] --> Prom[Prometheus]
+    Logs[Application & audit logs] --> ELK[ELK Stack]
+    Prom --> Grafana[Grafana dashboards]
+    Prom --> Alertmanager[Alertmanager]
+    ELK --> Grafana
+    ELK --> SecAlerts[Security-relevant log alerts]
+    Alertmanager --> OnCall[On-call notification]
+    SecAlerts --> OnCall
+    OnCall --> Response[Incident / threat response]
+```
 
-- [nearvic.com](https://nearvic.com) — the practice
-- [profile.nearvic.com](https://profile.nearvic.com) — full professional background, credentials,
-  and the original case studies this portfolio expands on
-- [linkedin.com/in/yahia-mohamed-benabbou](https://www.linkedin.com/in/yahia-mohamed-benabbou)
+## Implementation
+
+- **Metrics**: Prometheus scrapes application and cluster metrics; alerting rules
+  (`scripts/prometheus-alerts.yaml`) cover both operational thresholds (error rate, latency,
+  saturation) and security-relevant signals (abnormal auth failure rate, unexpected outbound
+  connections).
+- **Logs**: the ELK Stack centralizes application and Kubernetes audit logs, with a log-shipping
+  configuration (`scripts/filebeat.yaml`) that tags security-relevant log sources (auth events,
+  admission-controller denials, network-policy drops) for separate alerting.
+- **Dashboards**: Grafana gives a single view across both metrics and logs, so an on-call
+  engineer isn't switching tools mid-incident.
+
+## Security
+
+Correlating Kubernetes audit logs, admission-controller denials (from
+[`03-kubernetes-workload-hardening`](../03-kubernetes-workload-hardening)), and application auth
+logs in one place turned "did something just get blocked, and was that expected" from a
+multi-tool investigation into a single dashboard query.
+
+## Outcomes
+
+- **99.9%** platform uptime maintained
+- Proactive threat and incident detection — the resume-stated goal of this stack, achieved by
+  correlating security-relevant signals across metrics and logs rather than treating them as
+  separate concerns
+
+## Lessons
+
+The security-relevant alerts were noisy at first for the same reason the SAST/SCA findings were
+in [`02-devsecops-shift-left`](../02-devsecops-shift-left) — an alert nobody trusts gets muted.
+Tuning thresholds against a few weeks of real baseline traffic before turning on paging mattered
+more than getting the rule logic perfect on day one.
+
+## Tech stack
+
+Prometheus, Grafana, ELK Stack (Elasticsearch, Logstash, Kibana), Alertmanager
+
+## Related
+
+- [`03-kubernetes-workload-hardening`](../03-kubernetes-workload-hardening) — source of the admission/network-policy events this stack correlates
+- [`06-zero-trust-financial-workloads`](../06-zero-trust-financial-workloads) — a similar observability approach applied to a different, regulated environment

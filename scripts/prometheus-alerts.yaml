@@ -1,0 +1,53 @@
+# Representative Prometheus alerting rules — mix of operational and security-relevant signals,
+# illustrative of the pattern used to keep the platform at 99.9% uptime with proactive detection.
+
+groups:
+  - name: operational
+    rules:
+      - alert: HighErrorRate
+        expr: |
+          sum(rate(http_requests_total{status=~"5.."}[5m])) by (service)
+          / sum(rate(http_requests_total[5m])) by (service) > 0.02
+        for: 5m
+        labels:
+          severity: warning
+        annotations:
+          summary: "{{ $labels.service }} error rate above 2% for 5 minutes"
+
+      - alert: PodMemoryNearLimit
+        expr: |
+          container_memory_working_set_bytes / container_spec_memory_limit_bytes > 0.9
+        for: 10m
+        labels:
+          severity: warning
+        annotations:
+          summary: "{{ $labels.pod }} memory usage above 90% of its limit"
+
+  - name: security
+    rules:
+      - alert: AbnormalAuthFailureRate
+        expr: |
+          sum(rate(auth_failure_total[5m])) by (service) > 10
+        for: 2m
+        labels:
+          severity: critical
+        annotations:
+          summary: "{{ $labels.service }} seeing >10 auth failures/sec — possible credential stuffing or brute force"
+
+      - alert: NetworkPolicyDropSpike
+        expr: |
+          sum(rate(networkpolicy_drop_total[5m])) by (namespace) > 50
+        for: 5m
+        labels:
+          severity: warning
+        annotations:
+          summary: "Namespace {{ $labels.namespace }} seeing an unusual spike in denied connections"
+
+      - alert: AdmissionControllerRejectionSpike
+        expr: |
+          sum(rate(gatekeeper_violations_total[15m])) by (constraint_kind) > 5
+        for: 15m
+        labels:
+          severity: warning
+        annotations:
+          summary: "Repeated admission rejections for {{ $labels.constraint_kind }} — check for a misconfigured deploy or a probing attempt"
