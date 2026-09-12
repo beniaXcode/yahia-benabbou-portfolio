@@ -1,75 +1,55 @@
-# Kubernetes Workload Security Hardening
+# A clean pipeline doesn't mean a safe cluster
 
-**Employer:** Onclusive — Senior DevSecOps Engineer · **Timeframe:** 2026 · **Role:** Sole
-platform security engineer · **Client:** withheld under NDA
+**Onclusive — Senior DevSecOps Engineer, 2026**
+*(runtime security for the same platform in [`01-enterprise-cicd-platform`](../01-enterprise-cicd-platform))*
 
-> Re-cut of the platform in [`01-enterprise-cicd-platform`](../01-enterprise-cicd-platform),
-> focused on runtime cluster security rather than the pipeline.
+Getting an image through a gated pipeline tells you it was scanned. It tells you nothing about
+what that container is allowed to do once it's actually running — and mission-critical production
+workloads were running with no boundary between them. Any pod could talk to any other pod. Service
+accounts had more privilege than they used. If something did get through the pipeline gates, or a
+workload was compromised at runtime through no fault of the pipeline at all, there was nothing on
+the cluster side to contain it.
 
-## Summary
+I closed that gap in three pieces.
 
-Getting code through a secure pipeline doesn't secure what happens once a container is actually
-running. This project hardened the cluster side: what a workload is allowed to do once deployed,
-not just what's allowed to reach the cluster.
+**Admission control that actually checks provenance.** An OPA Gatekeeper policy
+(`scripts/gatekeeper-constraint.yaml`) rejects any deployment whose image isn't from the scanned,
+approved registry — enforced by the cluster itself, not something that relies on the pipeline
+having done its job correctly every single time.
 
-## The challenge
+**Network policy, default-deny.** Every namespace starts closed (`scripts/network-policy.yaml`).
+Services get explicit allow rules for exactly the traffic they need. I rolled this out namespace by
+namespace with a monitoring window before flipping enforcement on, because the first attempt at
+doing it cluster-wide broke legitimate traffic I hadn't accounted for — lesson learned the
+expensive way once, applied carefully after.
 
-Mission-critical production workloads ran on Kubernetes without workload-level guardrails — any
-pod could reach any other pod on the network, run with more privilege than it needed, and there
-was no gate stopping an unscanned image from being deployed.
-
-## Architecture
+**RBAC scoped to what a service actually needs.** No cluster-admin service accounts for
+application workloads, full stop (`scripts/rbac.yaml`).
 
 ```mermaid
 flowchart TD
-    Image[Container image pushed] --> Scan[Image scan — Trivy]
-    Scan --> Admission{Admission controller}
-    Admission -- unscanned/vulnerable --> Reject[Deployment rejected]
-    Admission -- passes --> Deploy[Scheduled to cluster]
-    Deploy --> NetPol[NetworkPolicy — default deny]
+    Image[Image pushed] --> Admission{Admission controller}
+    Admission -- unscanned --> Reject[Rejected]
+    Admission -- passes --> Deploy[Scheduled]
+    Deploy --> NetPol[Default-deny NetworkPolicy]
     Deploy --> RBAC[Namespace-scoped RBAC]
-    NetPol --> Workload[Running workload]
-    RBAC --> Workload
-    Workload --> Explicit[Explicit allow rules only]
+    NetPol --> Contained[A compromised pod can't move laterally]
 ```
 
-## Implementation
+## Why I think about it this way
 
-- **Admission control**: an admission-controller policy (`scripts/gatekeeper-constraint.yaml`,
-  OPA Gatekeeper) rejects any deployment referencing an image that hasn't passed the Trivy scan
-  gate — enforced at the cluster, not just hoped-for from the pipeline.
-- **Network policy, default-deny**: every namespace starts with a deny-all `NetworkPolicy`
-  (`scripts/network-policy.yaml`); services get explicit allow rules only for the traffic they
-  actually need, not open-by-default.
-- **RBAC scoped to namespace**: service accounts get the minimum verbs on the minimum resources
-  they need (`scripts/rbac.yaml`) — no cluster-admin service accounts for application workloads.
+I've seen the "our pipeline is secure" answer used to paper over a cluster that would let a
+compromised container reach anything on the network. Pipeline security and runtime security are
+different problems with different failure modes, and treating them as the same conversation is
+how you end up with a false sense of coverage. This project exists because I'd rather have both
+layers and never need the second one, than have one layer and find out the hard way it wasn't
+enough.
 
-## Security
+## What it's worth
 
-This is defense in depth on top of the pipeline gates in
-[`01-enterprise-cicd-platform`](../01-enterprise-cicd-platform)/[`02-devsecops-shift-left`](../02-devsecops-shift-left)
-— even if something slipped past the pipeline, the cluster itself won't run an unscanned image,
-and a compromised pod can't move laterally by default.
+This is part of what keeps the platform at **99.9%** uptime and holding **45%** fewer incidents —
+a workload that misbehaves inside a default-deny network can't turn into a wider incident, because
+it physically can't reach anything it wasn't explicitly allowed to.
 
-## Outcomes
-
-- Mission-critical production workloads secured with image scanning, admission control, network
-  policies, and RBAC (resume-stated scope of this work)
-- Contributes to the platform's **99.9%** uptime and **−45%** production-incident figures
-  reported for the broader CI/CD platform effort — a compromised or misbehaving workload
-  contained by network policy doesn't become a wider incident
-
-## Lessons
-
-Default-deny `NetworkPolicy` broke more legitimate traffic on rollout than expected — the fix was
-staging it namespace-by-namespace with a monitoring period before enforcing, not flipping it
-cluster-wide on day one.
-
-## Tech stack
-
-Kubernetes, OpenShift, Helm, OPA Gatekeeper, Trivy, RBAC, NetworkPolicy
-
-## Related
-
-- [`01-enterprise-cicd-platform`](../01-enterprise-cicd-platform) — the pipeline these images come from
-- [`04-security-observability-stack`](../04-security-observability-stack) — how violations and incidents get detected
+*Detection layer: [`04-security-observability-stack`](../04-security-observability-stack) — how a
+violation here actually gets seen.*

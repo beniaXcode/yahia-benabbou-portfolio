@@ -1,5 +1,4 @@
-# Representative OPA Gatekeeper constraint — rejects any pod whose image isn't from an approved,
-# scanned registry. Illustrative of the admission-control pattern used in production.
+# Admission policy — rejects any pod whose image isn't from the scanned, approved registry.
 
 apiVersion: templates.gatekeeper.sh/v1
 kind: ConstraintTemplate

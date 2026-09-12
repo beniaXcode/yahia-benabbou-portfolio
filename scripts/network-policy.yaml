@@ -1,5 +1,4 @@
-# Representative default-deny NetworkPolicy, applied per namespace, then layered with explicit
-# allow rules per service. Illustrative of the pattern used in production, not a literal copy.
+# Default-deny per namespace, then explicit allow rules per service.
 
 apiVersion: networking.k8s.io/v1
 kind: NetworkPolicy

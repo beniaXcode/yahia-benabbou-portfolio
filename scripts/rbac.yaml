@@ -1,5 +1,4 @@
-# Representative namespace-scoped RBAC — a service account gets only the verbs/resources it
-# needs, never cluster-admin. Illustrative of the pattern applied per workload.
+# A service account gets only the verbs/resources it needs. No cluster-admin for app workloads.
 
 apiVersion: v1
 kind: ServiceAccount
