@@ -1,6 +1,5 @@
-# Representative ArgoCD Application manifest — the GitOps delivery pattern used across all
-# 30+ microservices on the platform. Each service gets one of these, generated from a shared
-# template rather than hand-authored, keeping the platform's delivery model uniform.
+# ArgoCD Application template — every one of the 30+ microservices gets one of these,
+# generated from this shared shape rather than hand-authored per team.
 
 apiVersion: argoproj.io/v1alpha1
 kind: Application

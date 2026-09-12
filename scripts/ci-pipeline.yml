@@ -1,9 +1,5 @@
-# Representative CI pipeline template — illustrative reconstruction of the pattern used in
-# production, not the actual client pipeline (client code stays under NDA).
-#
-# One templated workflow served every one of the 30+ microservices on the platform, parameterized
-# by service name/path rather than hand-copied per team. Every quality gate below is a hard block,
-# not a warning.
+# The templated pipeline every service on the platform runs through — parameterized by
+# service name/path instead of copy-pasted per team.
 
 name: platform-ci
 

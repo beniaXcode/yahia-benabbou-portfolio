@@ -1,80 +1,66 @@
-# Enterprise CI/CD Platform Modernization & DevOps Transformation
+# One CI/CD platform, 30+ services, no more "it works on my team's pipeline"
 
-**Employer:** Onclusive — Senior DevSecOps Engineer · **Timeframe:** 2026 · **Role:** Sole platform
-engineer, designed and delivered end to end · **Client:** withheld under NDA
+**Onclusive — Senior DevSecOps Engineer, 2026**
 
-## Summary
+When I picked this up, every team had built its own pipeline. Some were good. Most were whatever
+got a service shipped under deadline pressure two years ago and never got revisited. New hires
+learned a different toolchain for every service they touched, and there was no consistent security
+gate anywhere — a team could ship straight to production without a single automated check if their
+pipeline just didn't have one wired in.
 
-A centralized CI/CD platform replacing a patchwork of per-team pipelines across 30+
-microservices, with automated security quality gates built in from the start rather than bolted
-on afterward.
+I didn't try to sell anyone on a rewrite. I built one templated pipeline, made it genuinely easier
+to use than what people already had, and let adoption do the arguing for me.
 
-## The challenge
+## What it does
 
-Before this platform, each development team maintained its own build/test/deploy tooling —
-inconsistent quality checks, no shared security gating, and a slow onboarding path for new
-engineers who had to learn a different pipeline for every service they touched.
-
-## Architecture
+Every one of the 30+ microservices on this platform now runs through the same path: build, test,
+SAST (SonarQube), dependency and container scanning (Trivy), a Terraform plan check on any infra
+change, then GitOps delivery through ArgoCD. No team hand-writes deploy scripts anymore, and no
+merge reaches `main` with an unresolved Critical or High finding — that's not a policy on a wiki,
+it's a status check that blocks the merge button.
 
 ```mermaid
 flowchart LR
-    Dev[Developer push] --> VCS[Git repository]
-    VCS --> CI[GitHub Actions pipeline]
-    CI --> SAST[SAST — SonarQube]
-    CI --> SCA[SCA — dependency scan]
-    CI --> IMG[Container scan — Trivy]
-    CI --> IAC[Infra validation — Terraform plan]
-    SAST --> Gate{Quality gate}
+    Dev[Developer push] --> CI[GitHub Actions]
+    CI --> SAST[SonarQube]
+    CI --> SCA[Dependency scan]
+    CI --> IMG[Container scan]
+    CI --> IAC[Terraform plan]
+    SAST --> Gate{Gate}
     SCA --> Gate
     IMG --> Gate
     IAC --> Gate
-    Gate -- pass --> ArgoCD[ArgoCD sync]
-    Gate -- fail --> Block[Blocked, findings routed to owning team]
-    ArgoCD --> K8s[OpenShift / Kubernetes cluster]
-    K8s --> Obs[Prometheus + Grafana + ELK]
-    Obs -. feedback .-> Dev
+    Gate -- pass --> ArgoCD
+    Gate -- fail --> Owner[Back to the owning team, with severity attached]
+    ArgoCD --> Cluster[OpenShift]
+    Cluster --> Obs[Prometheus / Grafana / ELK]
 ```
 
-## Implementation
+## The part I actually spent time on
 
-- **Pipeline standardization**: one templated GitHub Actions workflow (`scripts/ci-pipeline.yml`)
-  parameterized per service, replacing bespoke per-team scripts — every one of the 30+
-  microservices builds, tests, and deploys through the same gated path.
-- **GitOps delivery**: ArgoCD watches each service's deployment manifests and reconciles the
-  cluster to match — no manual `kubectl apply` in the production path (`scripts/argocd-app.yaml`).
-- **Infrastructure as code**: Terraform modules provision the shared platform infrastructure
-  (runners, registries, cluster add-ons) with the same review/plan/apply discipline as
-  application code (`scripts/platform.tf`).
-- **Self-service onboarding**: a documented deployment template and internal workshops let a new
-  engineer stand up a service on the platform without a platform-team hand-hold.
+Anyone can bolt a scanner onto a pipeline. The work was in what happens *after* the scanner fires.
+Early on, findings went into a shared security backlog and nobody with the context to fix them
+ever looked at it. I rebuilt the routing so a finding lands directly on the team that owns the
+code, tagged with severity, with a self-service Terraform module and Helm chart already available
+so fixing it doesn't mean waiting on a platform-team ticket. That's the difference between a gate
+people route around and a gate people actually use.
 
-## Security
+`scripts/ci-pipeline.yml` is the shape of the templated workflow every service runs. `scripts/argocd-app.yaml`
+is the delivery side. `scripts/platform.tf` is how the shared registry, runners, and cluster
+namespaces got provisioned — as code, reviewed like everything else.
 
-Quality gates are enforced, not advisory — a failed SAST, SCA, container-scan, or Terraform-plan
-check blocks the merge rather than just posting a warning. Findings route to the owning team with
-severity thresholds attached, not into a shared backlog nobody reads.
+## What changed
 
-## Outcomes
+Deployment frequency went up **60%** — teams ship more often once they're not each maintaining
+their own broken pipeline. Production incidents dropped **45%**. Vulnerabilities that used to
+reach production and get caught later now get caught pre-merge **95%** of the time, and the
+volume actually reaching production is down **80%**. Onboarding a new engineer onto a service went
+from "learn this team's specific pipeline" to "read the shared doc" — **50%** faster.
 
-- **+60%** deployment frequency across the platform
-- **−45%** production incidents after rollout
-- **−80%** vulnerabilities reaching production (caught earlier, in the gate)
-- **95%** of findings remediated pre-production rather than found after release
-- **−50%** onboarding time for new engineers joining a service on the platform
+None of that happened because the tools were clever. It happened because the gate was fast enough
+and the routing was clear enough that people stopped treating security as something separate from
+shipping.
 
-## Lessons
-
-Standardizing the pipeline paid off faster than standardizing the security gates — teams adopted
-the shared build/deploy workflow readily once it saved them work, but needed the findings-routing
-and severity-threshold design before they trusted the gates enough to stop working around them.
-
-## Tech stack
-
-GitHub Actions, ArgoCD, OpenShift, Kubernetes, Helm, Terraform, SonarQube, Trivy, Prometheus,
-Grafana, ELK Stack, HashiCorp Vault (secrets)
-
-## Related
-
-- Service: [DevOps & CI/CD Automation](https://nearvic.com/services/devops) *(planned — see nearvic.com's roadmap)*
-- Re-cut through a security lens: see [`02-devsecops-shift-left`](../02-devsecops-shift-left) and [`03-kubernetes-workload-hardening`](../03-kubernetes-workload-hardening) in this same portfolio — same platform, different discipline
+*Same platform, cut two other ways: [`02-devsecops-shift-left`](../02-devsecops-shift-left) is the
+program and process side of the security gates; [`03-kubernetes-workload-hardening`](../03-kubernetes-workload-hardening)
+is what happens once a workload is actually running on the cluster.*

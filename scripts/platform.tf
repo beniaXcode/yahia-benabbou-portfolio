@@ -1,6 +1,5 @@
-# Representative Terraform module — provisions the shared CI/CD platform infrastructure
-# (container registry, self-hosted runners, ArgoCD namespace) as code, reviewed and applied
-# through the same pipeline as application changes.
+# Provisions the shared CI/CD platform infra (registry, runners, ArgoCD namespace) — reviewed
+# and applied through the same pipeline as application changes.
 
 terraform {
   required_version = ">= 1.5"
