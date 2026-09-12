@@ -1,23 +1,37 @@
-# The security work nobody notices until it's missing
+# The security work that only gets noticed when it's missing
 
 **OLLMOO — London, UK (remote) — Software Engineer & DevOps Specialist, 2022–2024**
 *(the platform this secures: [`09-cloud-native-saas-platform`](../09-cloud-native-saas-platform))*
 
-Infrastructure security gets a project name and a diagram. Application security is usually just
-"the middleware," which is a shame, because it's where most of the actual risk lives on a product
-like this one — three languages, three service boundaries, and every one of them needing the same
-answer to "is this caller allowed to do this."
+## Why this doesn't get its own diagram-worthy infrastructure story
 
-## What I put in the shared path, not in each developer's memory
+Infrastructure security gets a project name, a network diagram, a clear before/after. Application
+security on a product like this one is usually just "the middleware" — unglamorous, easy to
+underinvest in, and, in my experience, exactly where most of the actual risk on a product like
+this lives. Three languages, three service boundaries, and every one of them needing a consistent
+answer to "is this caller allowed to do this specific thing" — which is a harder question to
+answer consistently than it sounds when you're a small team shipping features under deadline
+pressure every week.
 
-OAuth 2.0 and OIDC validate every request at the API entry point (`scripts/auth-middleware.js`), so
-no individual service reimplements its own auth check slightly differently from the others. Role
-checks happen per service, because a valid token proves who you are, not what you're allowed to do
-— those are different questions and I wanted the code to treat them that way. Input validation,
-output encoding against XSS, and CSRF protection on anything that changes state live in shared
-middleware, not as something a feature developer has to remember to add on a Friday afternoon
-under a deadline. That last part is the actual decision worth mentioning: the defenses that get
-skipped under delivery pressure are exactly the ones I made structurally hard to skip.
+## The decisions I made to take the answer out of individual developers' hands
+
+**Authentication got centralized at the entry point.** OAuth 2.0 and OIDC validate every request
+before it reaches any service (`scripts/auth-middleware.js`), so no individual service
+reimplements its own version of "check the token," each slightly differently, each a slightly
+different place for a bug to hide.
+
+**Authorization stayed separate from authentication, deliberately.** A valid token proves who's
+calling. It says nothing about what they're allowed to do — those are two different questions, and
+conflating them is a common source of privilege-escalation bugs I've seen elsewhere. Role checks
+happen per service, against the specific action being requested, not as a blanket "logged in
+means allowed."
+
+**The defenses that get skipped under pressure got moved into shared middleware, not left as
+individual discipline.** Input validation, output encoding against XSS, CSRF protection on
+state-changing routes — these are exactly the things a feature developer under a Friday-afternoon
+deadline forgets, not because they don't know better, but because remembering isn't the same as
+having it enforced structurally. I made these part of the framework every request goes through,
+not a checklist item in a PR template.
 
 ```mermaid
 flowchart LR
@@ -29,15 +43,17 @@ flowchart LR
     Trace --> Alert[Real-time alerting]
 ```
 
-## The tracing half of this
+## The tracing half, and why it mattered as much as the security half
 
-Three services means "why did this request fail" used to mean opening three separate logs and
-guessing at the timeline. AWS X-Ray (`scripts/tracing-config.js`) turned that into one trace per
-request. That's the whole reason MTTR dropped **60%** — not a smarter on-call engineer, just less
-time spent reconstructing what happened before anyone could start actually fixing it.
+With three services in the request path, "why did this specific request fail" used to mean opening
+three separate logs and reconstructing a timeline by hand, under pressure, while a customer waited.
+AWS X-Ray (`scripts/tracing-config.js`) turned that into a single trace per request. This is the
+actual, unglamorous reason MTTR dropped **60%** — not a smarter on-call engineer showing up, just
+meaningfully less time spent figuring out what happened before anyone could start fixing it.
 
-## The honest version of "why this matters"
+## The honest framing of why this work matters
 
-Nobody thanks you for the CSRF token that quietly worked. This kind of work is invisible when it's
-done right, which is exactly why it's easy to underinvest in on a small team moving fast — and
-exactly why I made sure it lived in the framework, not in anyone's discipline.
+Nobody sends a thank-you note for the CSRF token that quietly did its job. That invisibility is
+exactly why this category of work is easy to underinvest in on a small, fast-moving team — and
+exactly why I built it into the shared path rather than trusting it to anyone's individual
+discipline under deadline pressure, mine included.
