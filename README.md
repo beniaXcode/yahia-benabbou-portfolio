@@ -1,51 +1,80 @@
-# Project Portfolio — Yahia Mohamed Benabbou
+# Enterprise CI/CD Platform Modernization & DevOps Transformation
 
-Ten technical write-ups drawn from real, dated professional experience across three employers
-(Onclusive, OneCloud, OLLMOO) plus one academic capstone. Every fact in every write-up — dates,
-employer, technology, metrics — traces to the résumé and to the case studies already published
-at [profile.nearvic.com](https://profile.nearvic.com). Nothing here is invented.
+**Employer:** Onclusive — Senior DevSecOps Engineer · **Timeframe:** 2026 · **Role:** Sole platform
+engineer, designed and delivered end to end · **Client:** withheld under NDA
 
-## Why 10 write-ups from 3 jobs
+## Summary
 
-Real engineering engagements are rarely single-issue — a banking-platform migration is
-simultaneously a cloud-architecture story, a cost story, and a security story. Rather than
-inflate the count with invented side projects, this portfolio follows the same "re-cut by
-discipline" pattern already used on profile.nearvic.com's own security case studies: the same
-real engagements, described through different technical lenses, each one substantial enough to
-stand alone. No two write-ups claim to be a different *client*; several share an employer and a
-timeframe by design, and each one says so.
+A centralized CI/CD platform replacing a patchwork of per-team pipelines across 30+
+microservices, with automated security quality gates built in from the start rather than bolted
+on afterward.
 
-| # | Project | Employer | Timeframe |
-|---|---|---|---|
-| 01 | Enterprise CI/CD Platform Modernization | Onclusive | 2026 |
-| 02 | DevSecOps Shift-Left Security Program | Onclusive | 2026 |
-| 03 | Kubernetes Workload Security Hardening | Onclusive | 2026 |
-| 04 | Security Observability & Monitoring Stack | Onclusive | 2026 |
-| 05 | Multi-Cloud Banking Platform Migration | OneCloud | 2024–2025 |
-| 06 | Zero-Trust Architecture for Financial Workloads | OneCloud | 2024–2025 |
-| 07 | Morocco's First OCI Compute Cloud@Customer Deployment | OneCloud | 2025 |
-| 08 | GPU Infrastructure for AI/Inference Workloads | OneCloud | 2025 |
-| 09 | Cloud-Native SaaS Platform Engineering | OLLMOO | 2022–2024 |
-| 10 | Application Security & Observability for the SaaS Platform | OLLMOO | 2022–2024 |
+## The challenge
 
-Each project lives on its own branch (`01-enterprise-cicd-platform`, `02-devsecops-shift-left`,
-etc.), containing a `README.md` (challenge, architecture, implementation, security, outcomes,
-lessons) plus a `scripts/` folder with representative implementation artifacts — Terraform,
-Kubernetes manifests, CI pipeline configs, and similar. These are **illustrative
-re-implementations of the real architecture and approach**, written to demonstrate the same
-patterns used in production — not the actual proprietary client code, which stays under NDA like
-everywhere else on this practice's public-facing work.
+Before this platform, each development team maintained its own build/test/deploy tooling —
+inconsistent quality checks, no shared security gating, and a slow onboarding path for new
+engineers who had to learn a different pipeline for every service they touched.
 
-## Background
+## Architecture
 
-Bachelor of Engineering, Programmable Services, Systems & Networks (RSSP) — National School of
-Applied Sciences of Marrakesh (ENSA Marrakesh). Capstone project: *"Multi-Cloud Security and
-Automation Platform"* — the academic starting point for the multi-cloud and security-automation
-focus that runs through every project below.
+```mermaid
+flowchart LR
+    Dev[Developer push] --> VCS[Git repository]
+    VCS --> CI[GitHub Actions pipeline]
+    CI --> SAST[SAST — SonarQube]
+    CI --> SCA[SCA — dependency scan]
+    CI --> IMG[Container scan — Trivy]
+    CI --> IAC[Infra validation — Terraform plan]
+    SAST --> Gate{Quality gate}
+    SCA --> Gate
+    IMG --> Gate
+    IAC --> Gate
+    Gate -- pass --> ArgoCD[ArgoCD sync]
+    Gate -- fail --> Block[Blocked, findings routed to owning team]
+    ArgoCD --> K8s[OpenShift / Kubernetes cluster]
+    K8s --> Obs[Prometheus + Grafana + ELK]
+    Obs -. feedback .-> Dev
+```
 
-## Links
+## Implementation
 
-- [nearvic.com](https://nearvic.com) — the practice
-- [profile.nearvic.com](https://profile.nearvic.com) — full professional background, credentials,
-  and the original case studies this portfolio expands on
-- [linkedin.com/in/yahia-mohamed-benabbou](https://www.linkedin.com/in/yahia-mohamed-benabbou)
+- **Pipeline standardization**: one templated GitHub Actions workflow (`scripts/ci-pipeline.yml`)
+  parameterized per service, replacing bespoke per-team scripts — every one of the 30+
+  microservices builds, tests, and deploys through the same gated path.
+- **GitOps delivery**: ArgoCD watches each service's deployment manifests and reconciles the
+  cluster to match — no manual `kubectl apply` in the production path (`scripts/argocd-app.yaml`).
+- **Infrastructure as code**: Terraform modules provision the shared platform infrastructure
+  (runners, registries, cluster add-ons) with the same review/plan/apply discipline as
+  application code (`scripts/platform.tf`).
+- **Self-service onboarding**: a documented deployment template and internal workshops let a new
+  engineer stand up a service on the platform without a platform-team hand-hold.
+
+## Security
+
+Quality gates are enforced, not advisory — a failed SAST, SCA, container-scan, or Terraform-plan
+check blocks the merge rather than just posting a warning. Findings route to the owning team with
+severity thresholds attached, not into a shared backlog nobody reads.
+
+## Outcomes
+
+- **+60%** deployment frequency across the platform
+- **−45%** production incidents after rollout
+- **−80%** vulnerabilities reaching production (caught earlier, in the gate)
+- **95%** of findings remediated pre-production rather than found after release
+- **−50%** onboarding time for new engineers joining a service on the platform
+
+## Lessons
+
+Standardizing the pipeline paid off faster than standardizing the security gates — teams adopted
+the shared build/deploy workflow readily once it saved them work, but needed the findings-routing
+and severity-threshold design before they trusted the gates enough to stop working around them.
+
+## Tech stack
+
+GitHub Actions, ArgoCD, OpenShift, Kubernetes, Helm, Terraform, SonarQube, Trivy, Prometheus,
+Grafana, ELK Stack, HashiCorp Vault (secrets)
+
+## Related
+
+- Service: [DevOps & CI/CD Automation](https://nearvic.com/services/devops) *(planned — see nearvic.com's roadmap)*
+- Re-cut through a security lens: see [`02-devsecops-shift-left`](../02-devsecops-shift-left) and [`03-kubernetes-workload-hardening`](../03-kubernetes-workload-hardening) in this same portfolio — same platform, different discipline

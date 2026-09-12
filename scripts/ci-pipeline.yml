@@ -1,0 +1,88 @@
+# Representative CI pipeline template — illustrative reconstruction of the pattern used in
+# production, not the actual client pipeline (client code stays under NDA).
+#
+# One templated workflow served every one of the 30+ microservices on the platform, parameterized
+# by service name/path rather than hand-copied per team. Every quality gate below is a hard block,
+# not a warning.
+
+name: platform-ci
+
+on:
+  pull_request:
+    branches: [main]
+  push:
+    branches: [main]
+
+env:
+  SERVICE_NAME: ${{ github.event.repository.name }}
+
+jobs:
+  build-and-test:
+    runs-on: [self-hosted, platform]
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Build
+        run: make build SERVICE=${{ env.SERVICE_NAME }}
+
+      - name: Unit tests
+        run: make test SERVICE=${{ env.SERVICE_NAME }}
+
+  sast:
+    needs: build-and-test
+    runs-on: [self-hosted, platform]
+    steps:
+      - uses: actions/checkout@v4
+      - name: SonarQube static analysis
+        uses: sonarsource/sonarqube-scan-action@v2
+        env:
+          SONAR_TOKEN: ${{ secrets.SONAR_TOKEN }}
+        # Quality gate is enforced server-side in SonarQube; a failed gate fails this step.
+
+  dependency-scan:
+    needs: build-and-test
+    runs-on: [self-hosted, platform]
+    steps:
+      - uses: actions/checkout@v4
+      - name: Software composition analysis
+        run: |
+          trivy fs --exit-code 1 --severity HIGH,CRITICAL .
+
+  container-scan:
+    needs: build-and-test
+    runs-on: [self-hosted, platform]
+    steps:
+      - uses: actions/checkout@v4
+      - name: Build image
+        run: docker build -t "$SERVICE_NAME:${{ github.sha }}" .
+      - name: Scan image
+        run: |
+          trivy image --exit-code 1 --severity HIGH,CRITICAL "$SERVICE_NAME:${{ github.sha }}"
+
+  infra-validation:
+    needs: build-and-test
+    runs-on: [self-hosted, platform]
+    steps:
+      - uses: actions/checkout@v4
+      - name: Terraform format & validate
+        run: |
+          terraform -chdir=infra fmt -check
+          terraform -chdir=infra init -backend=false
+          terraform -chdir=infra validate
+
+  deploy:
+    needs: [sast, dependency-scan, container-scan, infra-validation]
+    if: github.ref == 'refs/heads/main'
+    runs-on: [self-hosted, platform]
+    steps:
+      - uses: actions/checkout@v4
+      - name: Push image to registry
+        run: |
+          docker push "$REGISTRY/$SERVICE_NAME:${{ github.sha }}"
+      - name: Update GitOps manifest
+        run: |
+          # ArgoCD watches this repo; updating the image tag here is the only deploy action.
+          yq -i ".spec.template.spec.containers[0].image = \"$REGISTRY/$SERVICE_NAME:${{ github.sha }}\"" \
+            "deploy/${SERVICE_NAME}/deployment.yaml"
+          git commit -am "deploy: ${SERVICE_NAME}@${{ github.sha }}"
+          git push

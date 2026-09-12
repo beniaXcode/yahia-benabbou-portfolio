@@ -1,0 +1,32 @@
+# Representative ArgoCD Application manifest — the GitOps delivery pattern used across all
+# 30+ microservices on the platform. Each service gets one of these, generated from a shared
+# template rather than hand-authored, keeping the platform's delivery model uniform.
+
+apiVersion: argoproj.io/v1alpha1
+kind: Application
+metadata:
+  name: platform-service-template
+  namespace: argocd
+  labels:
+    platform: enterprise-cicd
+spec:
+  project: default
+  source:
+    repoURL: https://github.com/example-org/platform-deploy.git
+    targetRevision: main
+    path: deploy/{{ .ServiceName }}
+  destination:
+    server: https://kubernetes.default.svc
+    namespace: "{{ .ServiceName }}"
+  syncPolicy:
+    automated:
+      prune: true
+      selfHeal: true
+    syncOptions:
+      - CreateNamespace=true
+    retry:
+      limit: 3
+      backoff:
+        duration: 5s
+        factor: 2
+        maxDuration: 1m
