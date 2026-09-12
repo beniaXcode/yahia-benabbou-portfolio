@@ -1,78 +1,46 @@
-# GPU Infrastructure for AI/Inference Workloads
+# Making expensive GPUs somebody's accountability, not a shared mystery bill
 
-**Employer:** OneCloud — Cloud & DevOps Engineer · **Timeframe:** 2025 · **Role:** Sole
-infrastructure engineer for the GPU platform · **Client:** withheld under NDA
+**OneCloud — Cloud & DevOps Engineer, 2025**
 
-## Summary
+GPU capacity is the one infrastructure line item everyone notices on the invoice and almost nobody
+can explain. This platform ran NVIDIA GPU fleets on OCI for rendering, simulation, and large-model
+inference, and my job wasn't just "make it scale" — it was making sure that when someone asked
+"why does this cost what it costs," there was a real answer instead of a shrug.
 
-An autoscaled, multi-node NVIDIA GPU fleet on OCI for rendering, simulation, and large-model
-inference — built so that expensive silicon is accountable per workload, not a shared cost
-nobody can attribute.
+## Where the actual engineering was
 
-## The challenge
-
-GPU capacity is expensive and, unmanaged, easy to under-utilize or over-provision — the platform
-needed to scale a GPU fleet up and down with real demand, tune network/topology for the
-workloads actually running (inference has different bandwidth/latency needs than training or
-rendering), and make cost attributable per workload rather than a lump line item.
-
-## Architecture
+Autoscaling GPU node pools sounds simple until you notice that idle GPU capacity is the most
+expensive kind of idle capacity there is — so the scaling policy I built
+(`scripts/gpu-nodepool-autoscaling.yaml`) scales out only when GPU-requesting work is actually
+queued, and scales back in aggressively the moment it's not. vLLM handled large-model inference
+serving on top of that. And I spent more time than I expected on topology — a multi-node inference
+job spread across GPUs with a bad interconnect path runs *worse* than the same job on fewer,
+correctly-placed GPUs. That reframed the whole scaling conversation on this project from "add more
+GPUs" to "place the ones you have correctly first," which is a cheaper and better answer nine
+times out of ten.
 
 ```mermaid
 flowchart TB
-    subgraph OCI[OCI]
-        GPUShapes[OCI GPU shapes — NVIDIA]
-        K8s[Kubernetes]
-        Monitoring[OCI Monitoring]
-    end
-    Workloads[Inference / rendering / simulation jobs] --> Scheduler[GPU-aware scheduler]
-    Scheduler --> GPUShapes
-    GPUShapes --> K8s
-    K8s --> Autoscale[Autoscaling — node pool scale-out/in on demand]
-    K8s --> vLLM[vLLM — large-model inference serving]
-    Monitoring --> Attribution[Per-workload GPU utilization & cost attribution]
-    Attribution -.-> Workloads
+    Job[Inference / rendering job] --> Scheduler[GPU-aware, topology-aware scheduler]
+    Scheduler --> Pool[Autoscaled GPU node pool]
+    Pool --> vLLM[vLLM serving]
+    Monitor[OCI Monitoring] --> Attribution[Per-workload utilization + cost, by team]
 ```
 
-## Implementation
+## The dashboard that actually got used
 
-- **Autoscaled GPU node pools**: Kubernetes cluster autoscaler tuned specifically for GPU node
-  pools (`scripts/gpu-nodepool-autoscaling.yaml`) — GPU nodes scale out only when GPU-requesting
-  workloads are actually pending, and scale back in aggressively once idle, since GPU capacity
-  sitting idle is the most expensive kind of idle capacity.
-- **Inference serving**: vLLM handles large-model inference serving on top of the GPU-scheduled
-  Kubernetes workloads, tuned for the throughput/latency profile the actual models needed.
-- **Topology-aware scheduling**: multi-node jobs get GPU topology hints so intra-job
-  communication stays on the fastest available interconnect rather than crossing unnecessary
-  network hops.
-- **Per-workload cost attribution**: OCI Monitoring dashboards (`scripts/gpu-cost-dashboard.json`)
-  tag GPU utilization by workload/team, turning "the GPU bill" from a shared unknown into a
-  per-team, per-workload number.
+`scripts/gpu-cost-dashboard.json` is the OCI Monitoring setup that turned "the GPU bill" from a
+shared, unowned number into per-team, per-workload attribution. That single change did more for
+how the platform was perceived internally than any amount of scheduler tuning — once a team could
+see their own number, GPU usage stopped being everyone's problem and nobody's job.
 
-## Security
+## Facility, not an afterthought
 
-Provisioned within an ISO 27001 / PCI DSS certified facility — the physical and compliance
-posture of the underlying OCI infrastructure was a given constraint this platform was built on
-top of, not something this project itself implemented.
+All of this ran inside an ISO 27001 / PCI DSS certified facility — a given constraint the platform
+was built on top of, not something I had to solve myself, but worth stating plainly since it's the
+kind of detail that matters to whoever's evaluating where their workloads actually run.
 
-## Outcomes
+## What it added up to
 
-- **Autoscaled, multi-node GPU fleet** running rendering, simulation, and large-model inference
-  workloads
-- **Per-workload cost attribution and tuning** — expensive silicon made accountable
-- Delivered inside an **ISO 27001 / PCI DSS certified** facility
-
-## Lessons
-
-Topology tuning mattered more than raw GPU count for multi-node inference throughput — a job
-spread across nodes with a bad interconnect path performed worse than the same job on fewer,
-better-placed GPUs, which reframed the scaling conversation from "add more GPUs" to "place them
-correctly first."
-
-## Tech stack
-
-OCI GPU shapes, NVIDIA, vLLM, Kubernetes, Terraform, OCI Monitoring
-
-## Related
-
-- [`07-oci-compute-cloud-at-customer`](../07-oci-compute-cloud-at-customer) — another OneCloud OCI engagement, same period
+An autoscaled, multi-node GPU fleet doing real inference and rendering work, with per-workload
+cost attribution that made the spend defensible instead of just large.

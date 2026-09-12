@@ -1,5 +1,4 @@
-# Representative Kubernetes cluster-autoscaler configuration for a GPU node pool — scales out
-# only when GPU-requesting pods are pending, scales in aggressively once idle.
+# Scales the GPU node pool out only when GPU-requesting work is pending, and back in fast once idle.
 
 apiVersion: v1
 kind: ConfigMap
