@@ -1,51 +1,80 @@
-# Project Portfolio — Yahia Mohamed Benabbou
+# Cloud-Native SaaS Platform Engineering
 
-Ten technical write-ups drawn from real, dated professional experience across three employers
-(Onclusive, OneCloud, OLLMOO) plus one academic capstone. Every fact in every write-up — dates,
-employer, technology, metrics — traces to the résumé and to the case studies already published
-at [profile.nearvic.com](https://profile.nearvic.com). Nothing here is invented.
+**Employer:** OLLMOO (London, UK — remote) — Software Engineer & DevOps Specialist ·
+**Timeframe:** 2022–2024 · **Role:** Full-stack development + CI/CD/infrastructure delivery ·
+**Client:** product team, withheld under NDA
 
-## Why 10 write-ups from 3 jobs
+> Re-cut through an application-security/observability lens in
+> [`10-appsec-observability-saas`](../10-appsec-observability-saas).
 
-Real engineering engagements are rarely single-issue — a banking-platform migration is
-simultaneously a cloud-architecture story, a cost story, and a security story. Rather than
-inflate the count with invented side projects, this portfolio follows the same "re-cut by
-discipline" pattern already used on profile.nearvic.com's own security case studies: the same
-real engagements, described through different technical lenses, each one substantial enough to
-stand alone. No two write-ups claim to be a different *client*; several share an employer and a
-timeframe by design, and each one says so.
+## Summary
 
-| # | Project | Employer | Timeframe |
-|---|---|---|---|
-| 01 | Enterprise CI/CD Platform Modernization | Onclusive | 2026 |
-| 02 | DevSecOps Shift-Left Security Program | Onclusive | 2026 |
-| 03 | Kubernetes Workload Security Hardening | Onclusive | 2026 |
-| 04 | Security Observability & Monitoring Stack | Onclusive | 2026 |
-| 05 | Multi-Cloud Banking Platform Migration | OneCloud | 2024–2025 |
-| 06 | Zero-Trust Architecture for Financial Workloads | OneCloud | 2024–2025 |
-| 07 | Morocco's First OCI Compute Cloud@Customer Deployment | OneCloud | 2025 |
-| 08 | GPU Infrastructure for AI/Inference Workloads | OneCloud | 2025 |
-| 09 | Cloud-Native SaaS Platform Engineering | OLLMOO | 2022–2024 |
-| 10 | Application Security & Observability for the SaaS Platform | OLLMOO | 2022–2024 |
+A cloud-native SaaS application — React front end, Node.js and Java microservices — running
+containerized on Amazon EKS, with the CI/CD and infrastructure-lifecycle automation to ship it
+reliably from a London-based product team working remotely.
 
-Each project lives on its own branch (`01-enterprise-cicd-platform`, `02-devsecops-shift-left`,
-etc.), containing a `README.md` (challenge, architecture, implementation, security, outcomes,
-lessons) plus a `scripts/` folder with representative implementation artifacts — Terraform,
-Kubernetes manifests, CI pipeline configs, and similar. These are **illustrative
-re-implementations of the real architecture and approach**, written to demonstrate the same
-patterns used in production — not the actual proprietary client code, which stays under NDA like
-everywhere else on this practice's public-facing work.
+## The challenge
 
-## Background
+The product team needed both feature velocity (a full-stack product still under active
+development) and delivery discipline (infrastructure automation, tested deploys) from the same
+small engineering effort — no separate platform team to hand infrastructure work off to.
 
-Bachelor of Engineering, Programmable Services, Systems & Networks (RSSP) — National School of
-Applied Sciences of Marrakesh (ENSA Marrakesh). Capstone project: *"Multi-Cloud Security and
-Automation Platform"* — the academic starting point for the multi-cloud and security-automation
-focus that runs through every project below.
+## Architecture
 
-## Links
+```mermaid
+flowchart LR
+    Dev[React / Next.js frontend] --> API[Node.js + Java microservices]
+    API --> EKS[Amazon EKS]
+    API --> RDS[(RDS — MySQL/PostgreSQL)]
+    GitLab[GitLab CI/CD] --> Build[Build & test]
+    Build --> CFN[CloudFormation + Terraform]
+    CFN --> EKS
+    Build --> Staging[Staging environment]
+    Staging -- promotion --> Production[Production environment]
+    EKS --> S3[S3 — static assets]
+```
 
-- [nearvic.com](https://nearvic.com) — the practice
-- [profile.nearvic.com](https://profile.nearvic.com) — full professional background, credentials,
-  and the original case studies this portfolio expands on
-- [linkedin.com/in/yahia-mohamed-benabbou](https://www.linkedin.com/in/yahia-mohamed-benabbou)
+## Implementation
+
+- **Full-stack development**: React/Next.js front end talking to Node.js and Java
+  microservices — one engineer covering both the application and the platform it runs on, which
+  is why the pipeline work in this project reads differently from the larger dedicated-platform
+  efforts in earlier projects.
+- **Containerized workloads on EKS**: application services run as containers orchestrated by
+  Kubernetes rather than directly on EC2, so scaling and rolling deploys are the cluster's job,
+  not a manual runbook.
+- **Infrastructure lifecycle as code**: CloudFormation and Terraform together
+  (`scripts/eks-cluster.tf`) manage the EKS cluster and supporting AWS resources (EC2, S3, RDS),
+  supporting seamless promotion from staging to production rather than hand-built environments
+  that drift apart.
+- **CI/CD with GitLab**: pipelines (`scripts/gitlab-ci.yml`) build, test, and deploy — automated
+  testing workflows introduced from scratch on a codebase that didn't have them before.
+
+## Security
+
+AWS infrastructure, databases, and Salesforce integrations were managed with scalability and
+security as an explicit focus, not an afterthought — see
+[`10-appsec-observability-saas`](../10-appsec-observability-saas) for the application-layer
+security work (auth/authz, input validation) done on the same platform.
+
+## Outcomes
+
+- **+25%** application performance improvement from system restructuring and optimization
+- Automated testing and CI/CD workflows introduced where none existed before
+- Seamless multi-environment promotion (staging → production) via infrastructure-as-code
+
+## Lessons
+
+Doing both product development and platform work with one person meant the infrastructure had to
+stay simple enough to maintain alongside active feature work — CloudFormation for the AWS
+primitives Terraform didn't yet manage well at the time, rather than forcing everything through
+one tool for its own sake, was a pragmatic call that paid off in maintenance time.
+
+## Tech stack
+
+React, Next.js, Node.js, Java, AWS (EKS, EC2, S3, RDS, Lambda), Docker, Terraform,
+CloudFormation, GitLab CI/CD
+
+## Related
+
+- [`10-appsec-observability-saas`](../10-appsec-observability-saas) — the security and observability layer on this same platform
