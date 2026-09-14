@@ -1,0 +1,22 @@
+apiVersion: cli.kyverno.io/v1alpha1
+kind: Test
+metadata:
+  name: require-seccomp-runtimedefault-test
+policies:
+  - ../../workload-hardening/require-seccomp-runtimedefault.yaml
+resources:
+  - resource-pass.yaml
+  - resource-fail.yaml
+results:
+  - policy: require-seccomp-runtimedefault
+    rule: check-seccomp
+    resources:
+      - compliant-pod
+    kind: Pod
+    result: pass
+  - policy: require-seccomp-runtimedefault
+    rule: check-seccomp
+    resources:
+      - noncompliant-pod
+    kind: Pod
+    result: fail

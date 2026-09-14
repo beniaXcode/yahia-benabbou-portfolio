@@ -1,0 +1,14 @@
+# What a compliant Pod looks like: a properly digest-pinned image from
+# this project's ECR, which — in an environment that can reach Fulcio and
+# Rekor — would carry a valid signature/attestation from the exact release
+# workflow named in ../../supply-chain/*.yaml. See NOTES.md in this
+# directory for why this fixture isn't run through `kyverno test` here.
+apiVersion: v1
+kind: Pod
+metadata:
+  name: compliant-pod
+  namespace: demo-api
+spec:
+  containers:
+    - name: app
+      image: "123456789012.dkr.ecr.us-east-1.amazonaws.com/zero-trust-gitops-platform/demo-api@sha256:aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa"

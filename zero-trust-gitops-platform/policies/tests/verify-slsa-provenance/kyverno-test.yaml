@@ -1,0 +1,18 @@
+# Only the fail case is asserted here — see NOTES.md for why the pass
+# case (a genuinely signed image) can't be verified without live
+# Fulcio/Rekor/registry access, which this sandbox doesn't have.
+apiVersion: cli.kyverno.io/v1alpha1
+kind: Test
+metadata:
+  name: verify-slsa-provenance-test
+policies:
+  - ../../supply-chain/verify-slsa-provenance.yaml
+resources:
+  - resource-fail.yaml
+results:
+  - policy: verify-slsa-provenance
+    rule: verify-provenance
+    resources:
+      - noncompliant-pod
+    kind: Pod
+    result: fail

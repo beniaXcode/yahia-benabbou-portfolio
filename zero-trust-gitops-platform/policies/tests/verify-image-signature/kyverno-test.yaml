@@ -1,0 +1,18 @@
+# Only the fail case is asserted here — see NOTES.md for why the pass
+# case (a genuinely signed image) can't be verified without live
+# Fulcio/Rekor/registry access, which this sandbox doesn't have.
+apiVersion: cli.kyverno.io/v1alpha1
+kind: Test
+metadata:
+  name: verify-image-signature-test
+policies:
+  - ../../supply-chain/verify-image-signature.yaml
+resources:
+  - resource-fail.yaml
+results:
+  - policy: verify-image-signature
+    rule: verify-signature
+    resources:
+      - noncompliant-pod
+    kind: Pod
+    result: fail

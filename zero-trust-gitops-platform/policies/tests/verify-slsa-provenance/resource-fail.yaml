@@ -1,0 +1,12 @@
+# A real, deterministic, network-independent failure: this image has no
+# digest at all, so verifyImages rejects it before it would ever need to
+# reach Fulcio/Rekor — see NOTES.md.
+apiVersion: v1
+kind: Pod
+metadata:
+  name: noncompliant-pod
+  namespace: demo-api
+spec:
+  containers:
+    - name: app
+      image: "123456789012.dkr.ecr.us-east-1.amazonaws.com/zero-trust-gitops-platform/demo-api:v1"

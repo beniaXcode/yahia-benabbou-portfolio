@@ -1,0 +1,22 @@
+apiVersion: cli.kyverno.io/v1alpha1
+kind: Test
+metadata:
+  name: require-resource-limits-test
+policies:
+  - ../../workload-hardening/require-resource-limits.yaml
+resources:
+  - resource-pass.yaml
+  - resource-fail.yaml
+results:
+  - policy: require-resource-limits
+    rule: check-resource-limits
+    resources:
+      - compliant-pod
+    kind: Pod
+    result: pass
+  - policy: require-resource-limits
+    rule: check-resource-limits
+    resources:
+      - noncompliant-pod
+    kind: Pod
+    result: fail

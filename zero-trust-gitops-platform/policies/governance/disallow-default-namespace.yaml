@@ -1,0 +1,44 @@
+apiVersion: kyverno.io/v1
+kind: ClusterPolicy
+metadata:
+  name: disallow-default-namespace
+  annotations:
+    policies.kyverno.io/title: Disallow the Default Namespace
+    policies.kyverno.io/category: Governance
+    policies.kyverno.io/severity: low
+    policies.kyverno.io/subject: Pod, Deployment, StatefulSet, DaemonSet, Job, CronJob
+    policies.kyverno.io/description: >-
+      Workloads must not be created in the default namespace.
+    nearvic.io/rationale: >-
+      The default namespace has no RBAC boundary, no NetworkPolicy of its
+      own, and no ResourceQuota unless one is added by hand — everything
+      generate/default-deny-networkpolicy.yaml and
+      generate/namespace-resourcequota.yaml automatically provide for a
+      real namespace is absent there because nothing ever "creates" the
+      default namespace for those generate rules to react to. A workload
+      landing there is a workload landing outside every other control in
+      this policy set.
+    nearvic.io/compliance: "CIS EKS 5.7.4, NIST SSDF PO.3.1"
+spec:
+  validationFailureAction: Audit
+  background: true
+  rules:
+    - name: check-not-default-namespace
+      match:
+        any:
+          - resources:
+              kinds:
+                - Pod
+                - Deployment
+                - StatefulSet
+                - DaemonSet
+                - Job
+                - CronJob
+      validate:
+        message: "Workloads must not be created in the default namespace."
+        deny:
+          conditions:
+            any:
+              - key: "{{ request.object.metadata.namespace }}"
+                operator: Equals
+                value: "default"

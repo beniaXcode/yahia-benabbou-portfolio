@@ -1,0 +1,35 @@
+apiVersion: kyverno.io/v1
+kind: ClusterPolicy
+metadata:
+  name: require-run-as-nonroot
+  annotations:
+    policies.kyverno.io/title: Require runAsNonRoot
+    policies.kyverno.io/category: Workload Hardening
+    policies.kyverno.io/severity: high
+    policies.kyverno.io/subject: Pod
+    policies.kyverno.io/description: >-
+      Pods must set spec.securityContext.runAsNonRoot: true.
+    nearvic.io/rationale: >-
+      A process root inside a container is one namespace escape or
+      misconfigured volume mount away from being root on the node. This
+      is redundant-by-design with demo-api's own Dockerfile USER 65532 —
+      the point is that the cluster does not have to trust the image
+      built that way; it re-asserts the same guarantee at admission for
+      every workload, including ones this platform didn't build.
+    nearvic.io/compliance: "CIS EKS 5.2.1, NIST SSDF PS.1.1, PCI-DSS v4 6.4.1"
+spec:
+  validationFailureAction: Audit
+  background: true
+  rules:
+    - name: check-runasnonroot
+      match:
+        any:
+          - resources:
+              kinds:
+                - Pod
+      validate:
+        message: "Pods must set spec.securityContext.runAsNonRoot: true."
+        pattern:
+          spec:
+            securityContext:
+              runAsNonRoot: true

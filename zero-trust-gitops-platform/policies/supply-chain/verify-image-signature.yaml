@@ -1,0 +1,50 @@
+apiVersion: kyverno.io/v1
+kind: ClusterPolicy
+metadata:
+  name: verify-image-signature
+  annotations:
+    policies.kyverno.io/title: Verify Image Signature (Keyless)
+    policies.kyverno.io/category: Supply Chain
+    policies.kyverno.io/severity: critical
+    policies.kyverno.io/subject: Pod
+    policies.kyverno.io/description: >-
+      Every image must carry a valid Sigstore keyless signature whose
+      Fulcio certificate identity matches this project's own release
+      workflow — not merely "a" signature from anyone.
+    nearvic.io/rationale: >-
+      This is the actual admission gate the whole platform is built
+      around (C4): it re-verifies cryptographic build identity at deploy
+      time rather than trusting that CI did its job once. An attacker who
+      gets write access to the cluster (a stolen kubeconfig, a compromised
+      CI job with cluster credentials) still cannot run an image unless it
+      was built and signed by this exact GitHub Actions workflow — signing
+      it themselves, even with a real Sigstore identity, fails because the
+      certificate subject/issuer won't match.
+    nearvic.io/compliance: "SLSA v1.0 Build L3, NIST SSDF PS.2.1/PS.3.2, CIS EKS 5.4.1, SOC 2 CC6.1/CC8.1"
+spec:
+  validationFailureAction: Audit
+  background: false
+  webhookTimeoutSeconds: 30
+  rules:
+    - name: verify-signature
+      match:
+        any:
+          - resources:
+              kinds:
+                - Pod
+      verifyImages:
+        - mutateDigest: false
+          imageReferences:
+            - "*.dkr.ecr.*.amazonaws.com/zero-trust-gitops-platform/*"
+          # subject/issuer identify the exact workflow that is allowed to
+          # produce a signature Kyverno will accept — this is what makes
+          # "verify who built it" true rather than "verify something
+          # signed it". The workflow file referenced here is created in
+          # Phase 4 (.github/workflows/build-sign-attest.yml).
+          attestors:
+            - entries:
+                - keyless:
+                    subject: "https://github.com/beniaXcode/yahia-benabbou-portfolio/.github/workflows/build-sign-attest.yml@refs/heads/main"
+                    issuer: "https://token.actions.githubusercontent.com"
+                    rekor:
+                      url: https://rekor.sigstore.dev

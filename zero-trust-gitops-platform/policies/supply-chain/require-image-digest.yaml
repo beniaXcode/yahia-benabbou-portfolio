@@ -1,0 +1,61 @@
+apiVersion: kyverno.io/v1
+kind: ClusterPolicy
+metadata:
+  name: require-image-digest
+  annotations:
+    policies.kyverno.io/title: Require Image Digest
+    policies.kyverno.io/category: Supply Chain
+    policies.kyverno.io/severity: high
+    policies.kyverno.io/subject: Pod
+    policies.kyverno.io/description: >-
+      Every container and initContainer image reference must include a
+      @sha256:... digest. A bare tag, including :latest, is rejected.
+    nearvic.io/rationale: >-
+      A tag can be repointed to different image content at any time after
+      admission approved it — pushing new bytes to an old tag silently
+      swaps what's running. A digest can't be repointed. Without this
+      control, verify-image-signature.yaml's signature check could pass
+      once against a tag and then be bypassed by retagging that same tag to
+      unsigned content later (C5).
+    nearvic.io/compliance: "SLSA v1.0 Build L3 (immutable references), NIST SSDF PS.3.1, CIS EKS 5.4.1"
+spec:
+  validationFailureAction: Audit
+  background: true
+  rules:
+    - name: containers-require-digest
+      match:
+        any:
+          - resources:
+              kinds:
+                - Pod
+      validate:
+        message: "All container images must be referenced by digest (@sha256:...), not a mutable tag."
+        foreach:
+          - list: "request.object.spec.containers"
+            deny:
+              conditions:
+                any:
+                  - key: "{{ contains(element.image, '@sha256:') }}"
+                    operator: Equals
+                    value: false
+    - name: init-containers-require-digest
+      match:
+        any:
+          - resources:
+              kinds:
+                - Pod
+      preconditions:
+        all:
+          - key: "{{ request.object.spec.initContainers || `[]` | length(@) }}"
+            operator: GreaterThan
+            value: 0
+      validate:
+        message: "All initContainer images must be referenced by digest (@sha256:...), not a mutable tag."
+        foreach:
+          - list: "request.object.spec.initContainers"
+            deny:
+              conditions:
+                any:
+                  - key: "{{ contains(element.image, '@sha256:') }}"
+                    operator: Equals
+                    value: false

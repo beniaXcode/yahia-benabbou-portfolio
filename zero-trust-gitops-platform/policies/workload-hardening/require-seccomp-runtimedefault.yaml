@@ -1,0 +1,36 @@
+apiVersion: kyverno.io/v1
+kind: ClusterPolicy
+metadata:
+  name: require-seccomp-runtimedefault
+  annotations:
+    policies.kyverno.io/title: Require seccompProfile RuntimeDefault
+    policies.kyverno.io/category: Workload Hardening
+    policies.kyverno.io/severity: medium
+    policies.kyverno.io/subject: Pod
+    policies.kyverno.io/description: >-
+      Pods must set spec.securityContext.seccompProfile.type: RuntimeDefault.
+    nearvic.io/rationale: >-
+      Without an explicit seccomp profile, most container runtimes still
+      apply a sane default, but that default is implicit and can vary by
+      runtime/version. RuntimeDefault filters the syscall surface a
+      container can reach explicitly and consistently, which is exactly
+      the kind of implicit-trust gap this platform's admission gate exists
+      to close.
+    nearvic.io/compliance: "CIS EKS 5.7.2, NIST SSDF PS.1.1"
+spec:
+  validationFailureAction: Audit
+  background: true
+  rules:
+    - name: check-seccomp
+      match:
+        any:
+          - resources:
+              kinds:
+                - Pod
+      validate:
+        message: "Pods must set spec.securityContext.seccompProfile.type: RuntimeDefault."
+        pattern:
+          spec:
+            securityContext:
+              seccompProfile:
+                type: RuntimeDefault

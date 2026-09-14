@@ -1,0 +1,50 @@
+apiVersion: kyverno.io/v1
+kind: ClusterPolicy
+metadata:
+  name: namespace-resourcequota
+  annotations:
+    policies.kyverno.io/title: Generate Namespace ResourceQuota
+    policies.kyverno.io/category: Governance
+    policies.kyverno.io/severity: medium
+    policies.kyverno.io/subject: Namespace, ResourceQuota
+    policies.kyverno.io/description: >-
+      Every new namespace (excluding the built-in system namespaces)
+      automatically gets a baseline ResourceQuota the moment it's created.
+    nearvic.io/rationale: >-
+      require-resource-limits.yaml bounds what one container can consume;
+      this bounds what one namespace can consume in total, so a namespace
+      full of otherwise-compliant workloads still can't exhaust node
+      capacity for every other tenant on the cluster. Same synchronize:
+      true reasoning as the NetworkPolicy generate rule — this is meant to
+      be structurally present, not remembered.
+    nearvic.io/compliance: "CIS EKS 5.7.3, SOC 2 CC7.2 (availability)"
+spec:
+  rules:
+    - name: generate-resourcequota
+      match:
+        any:
+          - resources:
+              kinds:
+                - Namespace
+      exclude:
+        any:
+          - resources:
+              namespaces:
+                - kube-system
+                - kube-public
+                - kube-node-lease
+                - default
+      generate:
+        apiVersion: v1
+        kind: ResourceQuota
+        name: default-resourcequota
+        namespace: "{{request.object.metadata.name}}"
+        synchronize: true
+        data:
+          spec:
+            hard:
+              requests.cpu: "4"
+              requests.memory: 8Gi
+              limits.cpu: "8"
+              limits.memory: 16Gi
+              pods: "20"

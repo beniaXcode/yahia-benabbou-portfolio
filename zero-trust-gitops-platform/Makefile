@@ -76,9 +76,15 @@ iac-scan: ## checkov (static) + tflint (core rules; no AWS-ruleset plugin — se
 	checkov -d $(TF_DIR) --config-file $(TF_DIR)/.checkov.yaml
 	@for d in $(TF_DIR)/modules/*/ $(TF_DIR)/envs/dev; do (cd "$$d" && tflint) || exit 1; done
 
+.PHONY: kyverno-test
+kyverno-test: ## kyverno test policies/ + the generate-rule exclusion checks
+	kyverno test policies/
+	bash policies/tests/run-generate-exclusion-tests.sh
+
 .PHONY: policy-catalog
-policy-catalog: ## Regenerate docs/policy-catalog.md from policies/ annotations (Phase 3)
-	@echo "not yet implemented (Phase 3)"; exit 1
+policy-catalog: ## Regenerate docs/policy-catalog.md from policies/ annotations
+	bash tools/gen-policy-catalog.sh
+	@git diff --quiet docs/policy-catalog.md 2>/dev/null && echo "docs/policy-catalog.md is up to date" || { echo "docs/policy-catalog.md is out of date — commit the regenerated file"; exit 1; }
 
 .PHONY: verify-chain
 verify-chain: ## cosign verify + verify-attestation + Rekor lookup for a given DIGEST (Phase 4)

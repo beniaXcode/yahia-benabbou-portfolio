@@ -1,0 +1,42 @@
+apiVersion: kyverno.io/v1
+kind: ClusterPolicy
+metadata:
+  name: require-probes
+  annotations:
+    policies.kyverno.io/title: Require Liveness and Readiness Probes
+    policies.kyverno.io/category: Governance
+    policies.kyverno.io/severity: low
+    policies.kyverno.io/subject: Pod
+    policies.kyverno.io/description: >-
+      Every container must define both a readinessProbe and a livenessProbe.
+    nearvic.io/rationale: >-
+      Argo CD's Health status for an Application (gitops/platform's
+      self-heal loop) depends on Kubernetes actually knowing whether a pod
+      is healthy. A container with no probes reports Running the instant
+      the process starts, whether or not demo-api's /healthz and /readyz
+      endpoints are actually answering — the exact gap that turns a silent
+      failure into an outage nobody notices.
+    nearvic.io/compliance: "SOC 2 CC7.2 (availability monitoring)"
+spec:
+  validationFailureAction: Audit
+  background: true
+  rules:
+    - name: check-probes
+      match:
+        any:
+          - resources:
+              kinds:
+                - Pod
+      validate:
+        message: "Every container must define both a readinessProbe and a livenessProbe."
+        foreach:
+          - list: "request.object.spec.containers"
+            deny:
+              conditions:
+                any:
+                  - key: "{{ keys(element.readinessProbe || `{}`) | length(@) }}"
+                    operator: LessThanOrEquals
+                    value: 0
+                  - key: "{{ keys(element.livenessProbe || `{}`) | length(@) }}"
+                    operator: LessThanOrEquals
+                    value: 0

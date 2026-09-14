@@ -1,0 +1,50 @@
+apiVersion: kyverno.io/v1
+kind: ClusterPolicy
+metadata:
+  name: disallow-host-namespaces
+  annotations:
+    policies.kyverno.io/title: Disallow Host Namespaces, hostPath, and Privileged Containers
+    policies.kyverno.io/category: Workload Hardening
+    policies.kyverno.io/severity: critical
+    policies.kyverno.io/subject: Pod
+    policies.kyverno.io/description: >-
+      Pods must not use hostNetwork, hostIPC, or hostPID, must not mount a
+      hostPath volume, and no container may run privileged.
+    nearvic.io/rationale: >-
+      Each of these is a direct escape from the container boundary to the
+      node: hostNetwork/hostIPC/hostPID share the node's own namespaces,
+      a hostPath volume reads/writes the node's filesystem directly, and a
+      privileged container gets effectively all root capabilities plus
+      device access. Any one of these makes every other hardening control
+      in this directory close to meaningless for that workload.
+    nearvic.io/compliance: "CIS EKS 5.2.2/5.2.3/5.2.4, NIST SSDF PS.1.1, SOC 2 CC6.1"
+spec:
+  validationFailureAction: Audit
+  background: true
+  rules:
+    - name: check-host-namespaces-and-privileged
+      match:
+        any:
+          - resources:
+              kinds:
+                - Pod
+      validate:
+        message: "hostNetwork/hostIPC/hostPID, hostPath volumes, and privileged containers are not allowed."
+        deny:
+          conditions:
+            any:
+              - key: "{{ request.object.spec.hostNetwork || `false` }}"
+                operator: Equals
+                value: true
+              - key: "{{ request.object.spec.hostIPC || `false` }}"
+                operator: Equals
+                value: true
+              - key: "{{ request.object.spec.hostPID || `false` }}"
+                operator: Equals
+                value: true
+              - key: "{{ request.object.spec.volumes[?hostPath] || `[]` | length(@) }}"
+                operator: GreaterThan
+                value: 0
+              - key: "{{ request.object.spec.containers[?securityContext.privileged==`true`] || `[]` | length(@) }}"
+                operator: GreaterThan
+                value: 0

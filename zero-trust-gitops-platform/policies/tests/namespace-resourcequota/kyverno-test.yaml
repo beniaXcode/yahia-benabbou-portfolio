@@ -1,0 +1,16 @@
+apiVersion: cli.kyverno.io/v1alpha1
+kind: Test
+metadata:
+  name: namespace-resourcequota-test
+policies:
+  - ../../generate/namespace-resourcequota.yaml
+resources:
+  - resource-pass.yaml
+results:
+  - policy: namespace-resourcequota
+    rule: generate-resourcequota
+    resources:
+      - demo-api
+    kind: Namespace
+    result: pass
+    generatedResource: generated-resource.yaml

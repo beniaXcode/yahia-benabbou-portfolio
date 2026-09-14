@@ -1,0 +1,54 @@
+apiVersion: kyverno.io/v1
+kind: ClusterPolicy
+metadata:
+  name: verify-slsa-provenance
+  annotations:
+    policies.kyverno.io/title: Verify SLSA Provenance Attestation
+    policies.kyverno.io/category: Supply Chain
+    policies.kyverno.io/severity: critical
+    policies.kyverno.io/subject: Pod
+    policies.kyverno.io/description: >-
+      Every image must carry a signed SLSA provenance attestation
+      (predicateType slsa.dev/provenance/v1) from this project's own
+      release workflow.
+    nearvic.io/rationale: >-
+      verify-image-signature.yaml proves the image was signed by the right
+      identity; this proves *how* it was built — the source repo, the
+      builder, the entry point — matches what the SLSA Build L3 generator
+      recorded, not just that a signature is present. A malicious insider
+      who merges a bad change (threat-model scenario 2) still produces an
+      image whose provenance honestly names this repo and this workflow;
+      it does not let a manually-built or hand-assembled image forge that
+      provenance and pass.
+    nearvic.io/compliance: "SLSA v1.0 Build L3 (Provenance-Available/Authentic), NIST SSDF PS.3.2"
+spec:
+  validationFailureAction: Audit
+  background: false
+  webhookTimeoutSeconds: 30
+  rules:
+    - name: verify-provenance
+      match:
+        any:
+          - resources:
+              kinds:
+                - Pod
+      verifyImages:
+        - mutateDigest: false
+          imageReferences:
+            - "*.dkr.ecr.*.amazonaws.com/zero-trust-gitops-platform/*"
+          attestors:
+            - entries:
+                - keyless:
+                    subject: "https://github.com/beniaXcode/yahia-benabbou-portfolio/.github/workflows/build-sign-attest.yml@refs/heads/main"
+                    issuer: "https://token.actions.githubusercontent.com"
+                    rekor:
+                      url: https://rekor.sigstore.dev
+          attestations:
+            - predicateType: https://slsa.dev/provenance/v1
+              attestors:
+                - entries:
+                    - keyless:
+                        subject: "https://github.com/beniaXcode/yahia-benabbou-portfolio/.github/workflows/build-sign-attest.yml@refs/heads/main"
+                        issuer: "https://token.actions.githubusercontent.com"
+                        rekor:
+                          url: https://rekor.sigstore.dev

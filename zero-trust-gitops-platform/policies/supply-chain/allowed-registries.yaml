@@ -1,0 +1,40 @@
+apiVersion: kyverno.io/v1
+kind: ClusterPolicy
+metadata:
+  name: allowed-registries
+  annotations:
+    policies.kyverno.io/title: Allowed Registries
+    policies.kyverno.io/category: Supply Chain
+    policies.kyverno.io/severity: high
+    policies.kyverno.io/subject: Pod
+    policies.kyverno.io/description: >-
+      Every container and initContainer image must come from this
+      account's own ECR — no Docker Hub, no GHCR, no other registry.
+    nearvic.io/rationale: >-
+      Signature verification only means something if the signer's identity
+      also implies where the image lives. Allowing arbitrary registries
+      would let an attacker who compromises any credential with cluster
+      write access deploy an image from a registry this platform never
+      pushes to or scans, sidestepping the ECR-side push/pull IAM scoping
+      in infra/terraform/modules/ecr entirely.
+    nearvic.io/compliance: "NIST SSDF PO.5.1, CIS EKS 5.4.1, SOC 2 CC6.1"
+spec:
+  validationFailureAction: Audit
+  background: true
+  rules:
+    - name: validate-registry
+      match:
+        any:
+          - resources:
+              kinds:
+                - Pod
+      validate:
+        message: "Images must come from this project's own ECR registry (*.dkr.ecr.*.amazonaws.com/zero-trust-gitops-platform/*)."
+        foreach:
+          - list: "request.object.spec.containers"
+            deny:
+              conditions:
+                any:
+                  - key: "{{ element.image }}"
+                    operator: NotEquals
+                    value: "*.dkr.ecr.*.amazonaws.com/zero-trust-gitops-platform/*"

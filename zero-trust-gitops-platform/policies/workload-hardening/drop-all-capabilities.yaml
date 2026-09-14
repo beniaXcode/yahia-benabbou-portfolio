@@ -1,0 +1,38 @@
+apiVersion: kyverno.io/v1
+kind: ClusterPolicy
+metadata:
+  name: drop-all-capabilities
+  annotations:
+    policies.kyverno.io/title: Drop All Capabilities
+    policies.kyverno.io/category: Workload Hardening
+    policies.kyverno.io/severity: high
+    policies.kyverno.io/subject: Pod
+    policies.kyverno.io/description: >-
+      Every container must explicitly drop the ALL Linux capability set.
+    nearvic.io/rationale: >-
+      Containers default to a non-trivial set of Linux capabilities
+      (NET_RAW, CHOWN, and others) that almost no ordinary web workload
+      needs and that meaningfully widen what a compromised process can do
+      on the node. Dropping ALL and adding back only what's actually
+      needed (nothing, for demo-api) shrinks that surface to zero by
+      default instead of trusting every workload author to remember to ask.
+    nearvic.io/compliance: "CIS EKS 5.2.9, NIST SSDF PS.1.1"
+spec:
+  validationFailureAction: Audit
+  background: true
+  rules:
+    - name: check-drop-all
+      match:
+        any:
+          - resources:
+              kinds:
+                - Pod
+      validate:
+        message: "Every container must set securityContext.capabilities.drop: [ALL]."
+        pattern:
+          spec:
+            containers:
+              - securityContext:
+                  capabilities:
+                    drop:
+                      - ALL

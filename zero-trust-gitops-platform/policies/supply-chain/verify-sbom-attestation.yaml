@@ -1,0 +1,52 @@
+apiVersion: kyverno.io/v1
+kind: ClusterPolicy
+metadata:
+  name: verify-sbom-attestation
+  annotations:
+    policies.kyverno.io/title: Verify SBOM Attestation
+    policies.kyverno.io/category: Supply Chain
+    policies.kyverno.io/severity: high
+    policies.kyverno.io/subject: Pod
+    policies.kyverno.io/description: >-
+      Every image must carry a signed CycloneDX SBOM attestation from this
+      project's own release workflow.
+    nearvic.io/rationale: >-
+      A signature and provenance prove *who* built the image; an SBOM
+      records *what's inside it*. Without a verified SBOM attestation, a
+      compromised or outdated base image or dependency (threat-model
+      scenario 3) has no machine-readable record for grype's continuous
+      re-verification job or an incident responder to check against — the
+      SBOM has to exist and be tied to this exact image by signature, not
+      generated after the fact from whatever is currently running.
+    nearvic.io/compliance: "NIST SSDF PS.3.2/RV.1.1, SLSA v1.0 (Provenance-Available), PCI-DSS v4 6.3.2"
+spec:
+  validationFailureAction: Audit
+  background: false
+  webhookTimeoutSeconds: 30
+  rules:
+    - name: verify-sbom
+      match:
+        any:
+          - resources:
+              kinds:
+                - Pod
+      verifyImages:
+        - mutateDigest: false
+          imageReferences:
+            - "*.dkr.ecr.*.amazonaws.com/zero-trust-gitops-platform/*"
+          attestors:
+            - entries:
+                - keyless:
+                    subject: "https://github.com/beniaXcode/yahia-benabbou-portfolio/.github/workflows/build-sign-attest.yml@refs/heads/main"
+                    issuer: "https://token.actions.githubusercontent.com"
+                    rekor:
+                      url: https://rekor.sigstore.dev
+          attestations:
+            - predicateType: https://cyclonedx.org/bom
+              attestors:
+                - entries:
+                    - keyless:
+                        subject: "https://github.com/beniaXcode/yahia-benabbou-portfolio/.github/workflows/build-sign-attest.yml@refs/heads/main"
+                        issuer: "https://token.actions.githubusercontent.com"
+                        rekor:
+                          url: https://rekor.sigstore.dev

@@ -1,0 +1,16 @@
+apiVersion: cli.kyverno.io/v1alpha1
+kind: Test
+metadata:
+  name: default-deny-networkpolicy-test
+policies:
+  - ../../generate/default-deny-networkpolicy.yaml
+resources:
+  - resource-pass.yaml
+results:
+  - policy: default-deny-networkpolicy
+    rule: generate-default-deny
+    resources:
+      - demo-api
+    kind: Namespace
+    result: pass
+    generatedResource: generated-resource.yaml

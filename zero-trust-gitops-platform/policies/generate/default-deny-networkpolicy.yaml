@@ -1,0 +1,49 @@
+apiVersion: kyverno.io/v1
+kind: ClusterPolicy
+metadata:
+  name: default-deny-networkpolicy
+  annotations:
+    policies.kyverno.io/title: Generate Default-Deny NetworkPolicy
+    policies.kyverno.io/category: Governance
+    policies.kyverno.io/severity: high
+    policies.kyverno.io/subject: Namespace, NetworkPolicy
+    policies.kyverno.io/description: >-
+      Every new namespace (excluding the built-in system namespaces)
+      automatically gets a default-deny-all NetworkPolicy the moment it's
+      created.
+    nearvic.io/rationale: >-
+      C9's "every namespace starts default-deny" is only actually true if
+      it happens without a human remembering to add it — the whole point
+      is that a namespace someone creates in a hurry doesn't sit wide open
+      by default while they get around to writing NetworkPolicies for it.
+      synchronize: true also means someone deleting this policy by hand
+      gets it regenerated rather than the namespace quietly staying open.
+    nearvic.io/compliance: "CIS EKS 5.3.2, NIST SSDF PS.1.1, PCI-DSS v4 1.3"
+spec:
+  rules:
+    - name: generate-default-deny
+      match:
+        any:
+          - resources:
+              kinds:
+                - Namespace
+      exclude:
+        any:
+          - resources:
+              namespaces:
+                - kube-system
+                - kube-public
+                - kube-node-lease
+                - default
+      generate:
+        apiVersion: networking.k8s.io/v1
+        kind: NetworkPolicy
+        name: default-deny-all
+        namespace: "{{request.object.metadata.name}}"
+        synchronize: true
+        data:
+          spec:
+            podSelector: {}
+            policyTypes:
+              - Ingress
+              - Egress
