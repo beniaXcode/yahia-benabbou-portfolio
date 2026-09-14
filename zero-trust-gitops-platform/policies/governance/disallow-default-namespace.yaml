@@ -20,7 +20,7 @@ metadata:
       this policy set.
     nearvic.io/compliance: "CIS EKS 5.7.4, NIST SSDF PO.3.1"
 spec:
-  validationFailureAction: Audit
+  validationFailureAction: Enforce
   background: true
   rules:
     - name: check-not-default-namespace

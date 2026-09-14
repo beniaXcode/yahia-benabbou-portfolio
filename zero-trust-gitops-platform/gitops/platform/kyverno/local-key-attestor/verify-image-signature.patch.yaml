@@ -1,0 +1,23 @@
+- op: replace
+  path: /spec/rules/0/verifyImages/0/attestors/0/entries/0
+  value:
+    keys:
+      # k8s://<namespace>/<secret_name> reads the named Secret's
+      # `cosign.pub` key — created fresh by demo/up.sh on every `make demo`
+      # run, holding only the public half of an ephemeral, never-committed
+      # key pair. See this overlay's kustomization.yaml for why no `rekor:`
+      # field is set here.
+      publicKeys: k8s://kyverno/cosign-local-demo-pubkey
+# The local registry demo/up.sh pushes demo-api to (see that script and
+# gitops/apps/demo-api's images: transformer) is neither the real ECR
+# pattern nor the real GHCR namespace, so it needs to be named here too —
+# and it's plain HTTP (no cluster-internal CA to hand Kyverno a real cert
+# for), which imageRegistryCredentials.allowInsecureRegistry is what
+# Kyverno's own CRD schema provides for exactly this case.
+- op: add
+  path: /spec/rules/0/verifyImages/0/imageReferences/-
+  value: "kind-registry.kind-registry.svc.cluster.local:5000/beniaxcode/yahia-benabbou-portfolio/demo-api"
+- op: add
+  path: /spec/rules/0/verifyImages/0/imageRegistryCredentials
+  value:
+    allowInsecureRegistry: true

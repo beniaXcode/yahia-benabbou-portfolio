@@ -32,7 +32,7 @@ metadata:
       permissions) entirely.
     nearvic.io/compliance: "NIST SSDF PO.5.1, CIS EKS 5.4.1, SOC 2 CC6.1"
 spec:
-  validationFailureAction: Audit
+  validationFailureAction: Enforce
   background: true
   rules:
     - name: validate-registry

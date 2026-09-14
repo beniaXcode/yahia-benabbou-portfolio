@@ -18,7 +18,7 @@ metadata:
       every workload, including ones this platform didn't build.
     nearvic.io/compliance: "CIS EKS 5.2.1, NIST SSDF PS.1.1, PCI-DSS v4 6.4.1"
 spec:
-  validationFailureAction: Audit
+  validationFailureAction: Enforce
   background: true
   rules:
     - name: check-runasnonroot

@@ -35,10 +35,17 @@ nodes:
   - role: worker
   - role: worker
 containerdConfigPatches:
-  # Lets the cluster pull the digest-pinned demo-api/cosign/kubectl images
-  # this repo references without hitting each registry's real anonymous
-  # rate limits on every `make demo` run — points at a local pull-through
-  # cache container demo/up.sh starts alongside the cluster.
+  # Solves only *kubelet's* half of reaching the local registry demo/up.sh
+  # builds and pushes demo-api to: containerd on each node resolves the
+  # container name "kind-registry" via Docker's own embedded DNS on the
+  # shared `kind` network (see up.sh's `docker network connect`), which
+  # plain pod-network DNS (CoreDNS) cannot do. Kyverno's verifyImages step
+  # runs *inside* a pod, though, and needs the *other* half — a real
+  # cluster-DNS name — which is why the mirrored hostname below is a
+  # svc.cluster.local name (created for real by up.sh as a Service +
+  # Endpoints with no selector, pointing at this same container) rather
+  # than "kind-registry" directly: one name, reachable both ways, for one
+  # consistent image reference across every manifest.
   - |-
-    [plugins."io.containerd.grpc.v1.cri".registry.mirrors."ghcr.io"]
+    [plugins."io.containerd.grpc.v1.cri".registry.mirrors."kind-registry.kind-registry.svc.cluster.local:5000"]
       endpoint = ["http://kind-registry:5000"]

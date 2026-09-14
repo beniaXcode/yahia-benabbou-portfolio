@@ -18,7 +18,7 @@ metadata:
       and the one most likely to matter at 2am.
     nearvic.io/compliance: "SOC 2 CC7.2 (asset inventory), NIST SSDF PO.3.1"
 spec:
-  validationFailureAction: Audit
+  validationFailureAction: Enforce
   background: true
   rules:
     - name: check-ownership-labels

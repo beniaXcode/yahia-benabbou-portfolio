@@ -1,0 +1,52 @@
+# BRIEF.md's "Local signing fidelity" contingency (§4), fallback path 2:
+# sigstore/scaffolding (path 1, the preferred option, "attempt it first")
+# was evaluated and set aside for this implementation — it stands up a
+# local CA plus Fulcio/CTLog/Rekor/Trillian as a set of long-running
+# services designed for CI test fixtures, not a lightweight `make demo`
+# loop, and this sandbox has no way to bring one up and iterate against it
+# to get its TLS/trust-root wiring right (no Docker, no kind — see
+# docs/fidelity.md). The documented fallback is exactly this: a demo-only
+# ephemeral cosign key pair generated at `make demo` time (demo/up.sh),
+# never committed, with Kyverno's three verifyImages policies switched from
+# a keyless (Fulcio) attestor to a `keys` attestor via this overlay.
+#
+# gitops/platform/kyverno/application.yaml's third source points here, not
+# at zero-trust-gitops-platform/policies directly — see that file's comment
+# for how a real, Fulcio-reachable production deployment restores the
+# keyless config. Lives alongside the Application that actually consumes
+# it, not inside policies/ itself: kustomize refuses an overlay nested
+# inside the directory tree of its own base (a real "cycle detected" error,
+# hit and fixed by moving this here rather than worked around).
+#
+# No `rekor:` field is added to the key-based attestors below: omitting it
+# means Kyverno does not attempt a transparency-log lookup at all, keeping
+# this path genuinely offline rather than trading one network dependency
+# (Fulcio) for another (the public Rekor instance).
+resources:
+  - ../../../../policies
+
+patches:
+  - target:
+      group: kyverno.io
+      version: v1
+      kind: ClusterPolicy
+      name: verify-image-signature
+    path: verify-image-signature.patch.yaml
+  - target:
+      group: kyverno.io
+      version: v1
+      kind: ClusterPolicy
+      name: verify-slsa-provenance
+    path: verify-slsa-provenance.patch.yaml
+  - target:
+      group: kyverno.io
+      version: v1
+      kind: ClusterPolicy
+      name: verify-sbom-attestation
+    path: verify-sbom-attestation.patch.yaml
+  - target:
+      group: kyverno.io
+      version: v1
+      kind: ClusterPolicy
+      name: allowed-registries
+    path: allowed-registries.patch.yaml

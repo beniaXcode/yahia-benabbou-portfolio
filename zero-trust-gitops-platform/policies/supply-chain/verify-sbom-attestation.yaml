@@ -20,7 +20,7 @@ metadata:
       generated after the fact from whatever is currently running.
     nearvic.io/compliance: "NIST SSDF PS.3.2/RV.1.1, SLSA v1.0 (Provenance-Available), PCI-DSS v4 6.3.2"
 spec:
-  validationFailureAction: Audit
+  validationFailureAction: Enforce
   background: false
   webhookTimeoutSeconds: 30
   rules:

@@ -1,0 +1,27 @@
+# Turns policies/ into a real Kustomize root — needed so
+# policies/overlays/local-key-attestor/ (see that directory's own comments)
+# can patch specific ClusterPolicy objects. gitops/platform/kyverno's own
+# Application source lists the exact same files individually, one
+# directory-source per production deployment path — see that file.
+# Lists every real ClusterPolicy explicitly rather than `resources: [.]`
+# with a glob: kustomize has no built-in glob, and an explicit list is also
+# exactly what makes it obvious this deliberately excludes tests/ (fixtures,
+# never meant to be applied to a cluster).
+resources:
+  - supply-chain/allowed-registries.yaml
+  - supply-chain/require-image-digest.yaml
+  - supply-chain/verify-image-signature.yaml
+  - supply-chain/verify-slsa-provenance.yaml
+  - supply-chain/verify-sbom-attestation.yaml
+  - workload-hardening/disallow-host-namespaces.yaml
+  - workload-hardening/disallow-privilege-escalation.yaml
+  - workload-hardening/drop-all-capabilities.yaml
+  - workload-hardening/require-readonly-rootfs.yaml
+  - workload-hardening/require-resource-limits.yaml
+  - workload-hardening/require-run-as-nonroot.yaml
+  - workload-hardening/require-seccomp-runtimedefault.yaml
+  - governance/disallow-default-namespace.yaml
+  - governance/require-ownership-labels.yaml
+  - governance/require-probes.yaml
+  - generate/default-deny-networkpolicy.yaml
+  - generate/namespace-resourcequota.yaml

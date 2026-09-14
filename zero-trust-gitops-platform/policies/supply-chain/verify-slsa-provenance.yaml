@@ -22,7 +22,7 @@ metadata:
       provenance and pass.
     nearvic.io/compliance: "SLSA v1.0 Build L3 (Provenance-Available/Authentic), NIST SSDF PS.3.2"
 spec:
-  validationFailureAction: Audit
+  validationFailureAction: Enforce
   background: false
   webhookTimeoutSeconds: 30
   rules:

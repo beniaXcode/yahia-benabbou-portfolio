@@ -19,7 +19,7 @@ metadata:
       in this directory close to meaningless for that workload.
     nearvic.io/compliance: "CIS EKS 5.2.2/5.2.3/5.2.4, NIST SSDF PS.1.1, SOC 2 CC6.1"
 spec:
-  validationFailureAction: Audit
+  validationFailureAction: Enforce
   background: true
   rules:
     - name: check-host-namespaces-and-privileged

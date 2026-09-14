@@ -1,0 +1,13 @@
+# Adds the local kind-registry pattern demo-api is actually pushed to in
+# this demo (see demo/up.sh) as a fourth allowed pattern, alongside the two
+# production ones and the cosign/kubectl tooling-image exceptions this
+# policy already carries — additive, kept out of the base policies/ tree so
+# a real Fulcio-reachable production deployment (which restores the
+# keyless attestor config in the sibling patch files) never carries this
+# local-only allowance either.
+- op: add
+  path: /spec/rules/0/validate/foreach/0/deny/conditions/all/-
+  value:
+    key: "{{ element.image }}"
+    operator: NotEquals
+    value: "kind-registry.kind-registry.svc.cluster.local:5000/beniaxcode/yahia-benabbou-portfolio/demo-api@*"

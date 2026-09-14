@@ -196,9 +196,21 @@ for why those specific lookups aren't reachable from this sandbox.
 
 | Item | Why deferred | Resolve in |
 |---|---|---|
-| `sigstore/scaffolding` chart/manifest version | GitHub-hosted, not a Go module release scheme this proxy can resolve | Phase 5/6 (local Fulcio/Rekor for the kind demo) |
 | SLSA Build L3 generator reusable-workflow tag | Consumed by ref (`@vX.Y.Z`), GitHub-hosted | Phase 4 (build-sign-attest.yml) |
 | `googleapis/release-please-action` SHA | Not yet used — `release.yml` is a later phase | Phase 9 (release) |
+
+**`sigstore/scaffolding` — resolved, not deferred (Phase 6):** BRIEF.md's §4 local-signing-fidelity
+contingency names this as the preferred local Fulcio/Rekor option, "attempt it first." It was: its
+manifests stand up a local CA plus Fulcio, a Certificate Transparency log, Rekor, and Trillian as a
+set of long-running services designed for CI test fixtures (its own repository frames it that way),
+not a lightweight `make demo` loop — and with no Docker/kind reachable in this sandbox to actually
+bring one up and iterate on its TLS/trust-root bootstrapping, there was no way to get that wiring
+right rather than merely plausible-looking. §4's own documented fallback was used instead: a
+demo-only ephemeral cosign key pair, generated at `make demo` time and never committed, with
+Kyverno's three `verifyImages` policies switched to a `keys` attestor via
+`gitops/platform/kyverno/local-key-attestor/` — see that overlay's comments and
+`docs/fidelity.md` for the full reasoning and exactly what a reviewer is not seeing locally, as §4
+requires.
 
 ## CLI availability in this sandbox (informational, not a version claim)
 

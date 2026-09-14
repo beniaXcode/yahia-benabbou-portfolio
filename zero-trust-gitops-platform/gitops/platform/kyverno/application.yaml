@@ -17,15 +17,20 @@ spec:
       ref: values
     # C8: the same policies/ this repo's CI shift-left step (ci.yml) runs
     # against `kustomize build` output are the ones actually enforced at
-    # admission — one source of truth, synced here as plain manifests.
-    # `tests/**` is excluded: those are kyverno-test.yaml fixtures and their
-    # sample Pod resources, never meant to reach a real cluster.
+    # admission — one source of truth. This path (not plain
+    # zero-trust-gitops-platform/policies) is the "local signing fidelity"
+    # fallback BRIEF.md's §4 anticipates: this specific deployment targets
+    # the offline kind demo, which cannot reach Fulcio, so its three
+    # verifyImages policies are patched to a local ephemeral-key attestor
+    # instead of Sigstore keyless — see that overlay's own comments for the
+    # full reasoning, and docs/fidelity.md for which path is active. A real
+    # deployment with a Fulcio-reachable cluster restores this to plain
+    # `path: zero-trust-gitops-platform/policies` (still a Kustomize root,
+    # via that directory's own kustomization.yaml — Argo CD detects it
+    # automatically, no `directory:` field needed either way).
     - repoURL: https://github.com/beniaXcode/yahia-benabbou-portfolio.git
       targetRevision: main
-      path: zero-trust-gitops-platform/policies
-      directory:
-        recurse: true
-        exclude: "tests/**"
+      path: zero-trust-gitops-platform/gitops/platform/kyverno/local-key-attestor
     # Points at manifests/ specifically, not this directory — this
     # directory also holds application.yaml and values.yaml, neither of
     # which is meant to be applied to the target cluster as-is.

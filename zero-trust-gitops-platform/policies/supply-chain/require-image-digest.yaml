@@ -19,7 +19,7 @@ metadata:
       unsigned content later (C5).
     nearvic.io/compliance: "SLSA v1.0 Build L3 (immutable references), NIST SSDF PS.3.1, CIS EKS 5.4.1"
 spec:
-  validationFailureAction: Audit
+  validationFailureAction: Enforce
   background: true
   rules:
     - name: containers-require-digest

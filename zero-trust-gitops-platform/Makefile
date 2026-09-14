@@ -86,21 +86,39 @@ policy-catalog: ## Regenerate docs/policy-catalog.md from policies/ annotations
 	bash tools/gen-policy-catalog.sh
 	@git diff --quiet docs/policy-catalog.md 2>/dev/null && echo "docs/policy-catalog.md is up to date" || { echo "docs/policy-catalog.md is out of date — commit the regenerated file"; exit 1; }
 
+IMAGE_REF ?= ghcr.io/beniaxcode/yahia-benabbou-portfolio/demo-api
+CERT_IDENTITY_REGEXP := ^https://github.com/beniaXcode/yahia-benabbou-portfolio/.github/workflows/build-sign-attest.yml@refs/heads/main$$
+CERT_OIDC_ISSUER := https://token.actions.githubusercontent.com
+
 .PHONY: verify-chain
-verify-chain: ## cosign verify + verify-attestation + Rekor lookup for a given DIGEST (Phase 4)
-	@echo "not yet implemented (Phase 4)"; exit 1
+verify-chain: ## cosign verify + verify-attestation + Rekor lookup for a given DIGEST (make verify-chain DIGEST=sha256:...)
+	@if [ -z "$(DIGEST)" ]; then echo "usage: make verify-chain DIGEST=sha256:..."; exit 1; fi
+	cosign verify "$(IMAGE_REF)@$(DIGEST)" \
+		--certificate-identity-regexp "$(CERT_IDENTITY_REGEXP)" \
+		--certificate-oidc-issuer "$(CERT_OIDC_ISSUER)"
+	cosign verify-attestation "$(IMAGE_REF)@$(DIGEST)" \
+		--type https://slsa.dev/provenance/v1 \
+		--certificate-identity-regexp "$(CERT_IDENTITY_REGEXP)" \
+		--certificate-oidc-issuer "$(CERT_OIDC_ISSUER)"
+	@echo "Rekor transparency log: search https://search.sigstore.dev for $(DIGEST) (exact query-parameter format not verified from this sandbox — see docs/fidelity.md)"
 
 .PHONY: demo
 demo: ## Bring up the full kind + Argo CD + Kyverno GitOps loop (needs Docker — see docs/fidelity.md)
 	bash demo/up.sh
 
 .PHONY: demo-attack
-demo-attack: ## Run the six attack scenarios against the kind demo (Phase 7)
-	@echo "not yet implemented (Phase 7)"; exit 1
+demo-attack: ## Run the six attack scenarios against the kind demo (needs `make demo` first)
+	@fail=0; \
+	for script in demo/attack/[0-9]*.sh; do \
+		echo "=============================================================="; \
+		echo "== $$script"; \
+		echo "=============================================================="; \
+		bash "$$script" || fail=1; \
+	done; \
+	exit $$fail
 
 .PHONY: verify
-verify: ## Run every gate this repo claims passes (lint + test + policy-test + demo-attack)
-	@echo "not yet implemented — will chain the above once they exist"; exit 1
+verify: lint test kyverno-test policy-test iac-scan demo-attack ## Run every gate this repo claims passes, chained
 
 .PHONY: clean
 clean: ## Tear down the local kind cluster and remove generated artefacts

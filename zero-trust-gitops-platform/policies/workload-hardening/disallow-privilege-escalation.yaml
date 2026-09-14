@@ -16,7 +16,7 @@ metadata:
       Leaving it unset defaults to allowing escalation on most runtimes.
     nearvic.io/compliance: "CIS EKS 5.2.10, NIST SSDF PS.1.1"
 spec:
-  validationFailureAction: Audit
+  validationFailureAction: Enforce
   background: true
   rules:
     - name: check-no-privilege-escalation

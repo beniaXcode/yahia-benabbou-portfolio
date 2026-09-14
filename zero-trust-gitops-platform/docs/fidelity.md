@@ -75,3 +75,48 @@ shift-left check against it, not by inspection; and `demo/up.sh`'s first draft t
 the classic self-management bootstrap chicken-and-egg, fixed by adding a one-time imperative
 install of Argo CD's stock manifest first, exactly as Argo CD's own documentation describes for
 this pattern.
+
+## Phase 7 — the attack demo
+
+**Every one of the six `demo/attack/*.sh` scripts needs a real, running `make demo` cluster and has
+never been executed** — the one gap that applies uniformly to this entire phase, for the same
+reason as every cluster-dependent claim before it: no Docker daemon exists in this sandbox. Each
+script is real and complete (`bash -n` clean, cross-checked line by line against the actual
+Kyverno policy it targets and the actual manifests it deploys), but "correctly written" and
+"observed to work" are different claims, and only the first one is made here. `demo/recordings/`
+stays empty rather than holding a fabricated asciinema cast or GIF — those get generated for real
+only once `make demo-attack` has actually run somewhere with Docker (a GitHub-hosted CI runner, or
+a contributor's machine).
+
+**A real bug found and fixed while writing this phase: every Kyverno policy was `Audit`, not
+`Enforce`.** All 15 non-generate `ClusterPolicy` objects under `policies/` carried
+`validationFailureAction: Audit` since Phase 3 — meaning every one of them would have logged a
+violation and let the resource through, not blocked it, on a real cluster. This was silent because
+`kyverno test`/`kyverno apply`'s pass/fail verdicts (used for every gate through Phase 6) evaluate a
+rule's validate logic directly and are correctly indifferent to `validationFailureAction` — it only
+changes what a live admission controller actually does, which nothing before this phase had reason
+to exercise. It surfaced here because Phase 7's entire premise (C4: "Kyverno **blocks** any image
+whose signature/provenance doesn't match…") is meaningless under Audit — the six attack scripts
+would all have reported false "DENIED" results by design if a real API server were involved (Audit
+mode still returns an admission response, just an allowing one; only the actual field would show a
+policy violation was logged). Fixed by flipping all 15 to `Enforce`, re-running the full 32-test
+suite and both shift-left checks to confirm the change doesn't alter any rule's pass/fail verdict
+(confirmed: it doesn't, matching the reasoning above) — a real, deliberate strengthening in service
+of matching what this repo already documented as true, not a new decision made here.
+
+**Attack 4 (wrong signer identity) uses the local-key-attestor fallback, not real Fulcio identity
+mismatch.** In production (keyless), "a different identity" is a certificate naming a different
+GitHub Actions workflow. This demo's actual admission-time attestor (see Phase 6's entry above and
+`gitops/platform/kyverno/local-key-attestor/`) is key-based, so the script's equivalent is signing
+with a second, unregistered ephemeral key pair — the same mechanism Kyverno checks (verify against
+one specific trusted identity/key, not "any" valid signature) either way, documented in the
+script's own header rather than silently treated as identical.
+
+**Attack 6 (exfiltrate node role) cannot exercise IMDSv2/hop-limit at all.** A `kind` node is a
+Docker container, not an EC2 instance — there is no instance-metadata service reachable here, real
+or otherwise, and no launch-template hop-limit setting to test. The script proves the half that
+*is* real on `kind`: with no Pod Identity association and Calico actually enforcing the relevant
+NetworkPolicy (Phase 6), a pod cannot open a connection to `169.254.169.254` at all. The
+IMDSv2-plus-hop-limit-1 defense against a node-level (non-pod) credential-theft attempt is proven
+separately, by `infra/terraform/modules/eks`'s launch template and its own Terraform validation
+(Phase 2) — not by anything this kind demo can exercise, since kind has no EC2 launch templates.

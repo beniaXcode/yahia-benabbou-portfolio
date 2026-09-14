@@ -19,7 +19,7 @@ metadata:
       brute-force loop) without immediately standing out.
     nearvic.io/compliance: "CIS EKS 5.7.3, NIST SSDF PS.1.1"
 spec:
-  validationFailureAction: Audit
+  validationFailureAction: Enforce
   background: true
   rules:
     - name: check-resource-limits

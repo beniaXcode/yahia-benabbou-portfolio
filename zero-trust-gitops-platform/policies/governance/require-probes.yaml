@@ -24,7 +24,7 @@ metadata:
       failure into an outage nobody notices.
     nearvic.io/compliance: "SOC 2 CC7.2 (availability monitoring)"
 spec:
-  validationFailureAction: Audit
+  validationFailureAction: Enforce
   background: true
   rules:
     - name: check-probes

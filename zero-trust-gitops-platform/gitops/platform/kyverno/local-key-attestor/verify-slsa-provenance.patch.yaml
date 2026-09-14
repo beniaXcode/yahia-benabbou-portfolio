@@ -1,0 +1,21 @@
+# See verify-image-signature.patch.yaml — same substitutions, applied at
+# both places this policy names a keyless attestor (the image signature
+# itself, and the SLSA provenance attestation's own signature) plus the
+# same local-registry/insecure-registry additions.
+- op: replace
+  path: /spec/rules/0/verifyImages/0/attestors/0/entries/0
+  value:
+    keys:
+      publicKeys: k8s://kyverno/cosign-local-demo-pubkey
+- op: replace
+  path: /spec/rules/0/verifyImages/0/attestations/0/attestors/0/entries/0
+  value:
+    keys:
+      publicKeys: k8s://kyverno/cosign-local-demo-pubkey
+- op: add
+  path: /spec/rules/0/verifyImages/0/imageReferences/-
+  value: "kind-registry.kind-registry.svc.cluster.local:5000/beniaxcode/yahia-benabbou-portfolio/demo-api"
+- op: add
+  path: /spec/rules/0/verifyImages/0/imageRegistryCredentials
+  value:
+    allowInsecureRegistry: true
