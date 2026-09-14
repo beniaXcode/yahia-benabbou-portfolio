@@ -1,0 +1,14 @@
+extends: default
+
+yaml-files:
+  - "*.yaml"
+  - "*.yml"
+
+rules:
+  line-length:
+    max: 140
+    level: warning
+  document-start: disable
+  comments-indentation: disable
+  braces:
+    max-spaces-inside: 1

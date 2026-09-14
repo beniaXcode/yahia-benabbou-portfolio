@@ -1,0 +1,52 @@
+# Run from the repo root with:
+#   pre-commit run --all-files -c zero-trust-gitops-platform/.pre-commit-config.yaml
+# (scoped here, not at the repo root, because the rest of the repo is a
+# separate portfolio with no shared toolchain — see ../CLAUDE.md)
+repos:
+  - repo: https://github.com/pre-commit/pre-commit-hooks
+    rev: v5.0.0
+    hooks:
+      - id: trailing-whitespace
+        files: ^zero-trust-gitops-platform/
+      - id: end-of-file-fixer
+        files: ^zero-trust-gitops-platform/
+      - id: check-merge-conflict
+      - id: check-yaml
+        files: ^zero-trust-gitops-platform/.*\.ya?ml$
+        args: [--allow-multiple-documents]
+      - id: check-added-large-files
+        args: [--maxkb=1024]
+
+  - repo: local
+    hooks:
+      - id: terraform-fmt
+        name: terraform fmt -check
+        entry: bash -c 'cd zero-trust-gitops-platform/infra/terraform && terraform fmt -check -recursive'
+        language: system
+        files: ^zero-trust-gitops-platform/infra/terraform/.*\.tf$
+        pass_filenames: false
+
+      - id: gofmt
+        name: gofmt -l
+        entry: bash -c 'out=$(gofmt -l zero-trust-gitops-platform/apps); if [ -n "$out" ]; then echo "$out"; exit 1; fi'
+        language: system
+        files: ^zero-trust-gitops-platform/apps/.*\.go$
+        pass_filenames: false
+
+      - id: yamllint
+        name: yamllint
+        entry: yamllint -c zero-trust-gitops-platform/.yamllint.yaml
+        language: system
+        files: ^zero-trust-gitops-platform/.*\.ya?ml$
+
+      - id: gitleaks
+        name: gitleaks protect (staged changes)
+        entry: gitleaks protect --staged --config .gitleaks.toml --redact -v
+        language: system
+        pass_filenames: false
+
+      - id: no-secrets-no-static-keys
+        name: no committed keys / AWS creds / non-GITHUB_TOKEN Actions secrets (C1, C3)
+        entry: zero-trust-gitops-platform/tools/check-no-secrets.sh
+        language: system
+        pass_filenames: false

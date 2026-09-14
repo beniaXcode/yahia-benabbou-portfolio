@@ -1,0 +1,46 @@
+# --- secrets and credentials: never tracked, anywhere in this repo ---
+*.key
+*.pem
+*.p12
+*.pfx
+cosign.key
+cosign.pub.bak
+.env
+.env.*
+kubeconfig
+kubeconfig.*
+*.kubeconfig
+*credentials*
+*.tfvars
+!*.tfvars.example
+
+# --- terraform ---
+.terraform/
+.terraform.lock.hcl
+*.tfstate
+*.tfstate.*
+crash.log
+crash.*.log
+override.tf
+override.tf.json
+*_override.tf
+*_override.tf.json
+
+# --- go ---
+/zero-trust-gitops-platform/apps/**/bin/
+*.test
+*.out
+
+# --- kind / local demo state ---
+demo/.kube/
+demo/kind-kubeconfig*
+
+# --- editors / OS ---
+.DS_Store
+*.swp
+.idea/
+.vscode/
+
+# --- tool caches ---
+.cache/
+node_modules/

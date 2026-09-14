@@ -1,0 +1,44 @@
+title = "yahia-benabbou-portfolio gitleaks config"
+
+[extend]
+useDefault = true
+
+# Constraint C1/C3 (see zero-trust-gitops-platform/CLAUDE.md): this repo must
+# never contain a static AWS key or a private signing key. The default
+# gitleaks ruleset already covers AKIA-style access keys and PEM/PKCS8
+# private-key headers; the rules below add repo-specific belt-and-suspenders
+# checks that are cheap false positives elsewhere but exactly right here.
+
+[[rules]]
+id = "aws-access-key-id"
+description = "AWS Access Key ID"
+regex = '''AKIA[0-9A-Z]{16}'''
+tags = ["key", "AWS"]
+
+[[rules]]
+id = "aws-secret-access-key-assignment"
+description = "AWS Secret Access Key assigned to a variable"
+regex = '''(?i)(aws_secret_access_key|aws_secret_key)\s*[=:]\s*['"][A-Za-z0-9/+=]{40}['"]'''
+tags = ["key", "AWS"]
+
+[[rules]]
+id = "cosign-private-key-file"
+description = "A cosign private key must never be committed (keyless signing only, see ADR-0003)"
+regex = '''-----BEGIN (ENCRYPTED SIGSTORE|EC|RSA|OPENSSH) PRIVATE KEY-----'''
+tags = ["key", "sigstore"]
+
+[[rules]]
+id = "github-actions-non-github-token-secret"
+description = "A GitHub Actions workflow referencing a secrets.* entry (violates C1 unless it is exactly secrets.GITHUB_TOKEN, which the allowlist below excludes)"
+regex = '''secrets\.[A-Za-z0-9_]+'''
+path = '''\.github/workflows/.*\.ya?ml$'''
+tags = ["ci", "secret"]
+
+[allowlist]
+description = "known-safe patterns"
+regexes = [
+  '''secrets\.GITHUB_TOKEN''',
+]
+paths = [
+  '''\.gitleaks\.toml''',
+]

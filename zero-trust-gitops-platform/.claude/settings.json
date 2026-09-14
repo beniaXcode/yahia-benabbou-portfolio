@@ -1,0 +1,87 @@
+{
+  "permissions": {
+    "allow": [
+      "Bash(make *)",
+      "Bash(git status*)",
+      "Bash(git diff*)",
+      "Bash(git log*)",
+      "Bash(git show*)",
+      "Bash(kubectl get*)",
+      "Bash(kubectl describe*)",
+      "Bash(kubectl logs*)",
+      "Bash(terraform fmt*)",
+      "Bash(terraform validate*)",
+      "Bash(terraform plan*)",
+      "Bash(terraform test*)",
+      "Bash(tflint*)",
+      "Bash(checkov*)",
+      "Bash(conftest test*)",
+      "Bash(kyverno test*)",
+      "Bash(kyverno apply*)",
+      "Bash(cosign verify*)",
+      "Bash(cosign verify-attestation*)",
+      "Bash(syft *)",
+      "Bash(grype *)",
+      "Bash(helm template*)",
+      "Bash(helm lint*)",
+      "Bash(kustomize build*)",
+      "Bash(gofmt*)",
+      "Bash(go test*)",
+      "Bash(go vet*)",
+      "Bash(pre-commit run*)",
+      "Bash(gitleaks detect*)",
+      "Bash(gitleaks protect*)",
+      "Bash(yamllint*)",
+      "Bash(jq *)",
+      "Bash(yq *)"
+    ],
+    "ask": [
+      "Bash(terraform apply*)",
+      "Bash(terraform destroy*)",
+      "Bash(kubectl delete*)",
+      "Bash(kubectl apply*)",
+      "Bash(aws *)",
+      "Bash(gh api*)",
+      "Bash(gh repo delete*)",
+      "Bash(gh secret*)"
+    ],
+    "deny": [
+      "Bash(rm -rf /*)",
+      "Bash(rm -rf ~*)"
+    ]
+  },
+  "hooks": {
+    "PreToolUse": [
+      {
+        "matcher": "Write|Edit",
+        "hooks": [
+          {
+            "type": "command",
+            "command": "\"$CLAUDE_PROJECT_DIR\"/.claude/hooks/pre-write-secret-guard.sh"
+          }
+        ]
+      }
+    ],
+    "PostToolUse": [
+      {
+        "matcher": "Write|Edit",
+        "hooks": [
+          {
+            "type": "command",
+            "command": "\"$CLAUDE_PROJECT_DIR\"/.claude/hooks/post-edit-format.sh"
+          }
+        ]
+      }
+    ],
+    "Stop": [
+      {
+        "hooks": [
+          {
+            "type": "command",
+            "command": "make lint-fast"
+          }
+        ]
+      }
+    ]
+  }
+}

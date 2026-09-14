@@ -1,0 +1,31 @@
+# Pinned tool versions for zero-trust-gitops-platform.
+# Every version here was resolved against a live source, not guessed —
+# see docs/versions.md for the method and date. Re-run `mise install` after
+# cloning; CI installs the same pins via the same file.
+
+[tools]
+terraform = "1.16.2"
+kubectl = "1.37.0"
+helm = "3.22.0"
+kustomize = "5.8.1"
+kind = "0.33.0"
+cosign = "2.6.5"
+syft = "1.51.1"
+grype = "0.118.0"
+gitleaks = "8.30.1"
+tflint = "0.64.0"
+conftest = "0.70.0"
+yq = "4.53.6"
+go = "1.24.7"
+"pipx:pre-commit" = "4.6.2"
+"pipx:checkov" = "3.3.17"
+"pipx:mkdocs-material" = "9.7.7"
+"pipx:yamllint" = "1.38.0"
+
+[env]
+GOTOOLCHAIN = "auto"
+
+# kyverno-cli (v1.19.1, same tag as Kyverno itself — see docs/versions.md)
+# is not in mise's core plugin registry as of this writing. Install it with:
+#   go install github.com/kyverno/kyverno/cmd/cli/kubectl-kyverno@v1.19.1
+# (Makefile's `make tools` does this automatically.)

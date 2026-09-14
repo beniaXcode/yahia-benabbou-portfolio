@@ -1,0 +1,64 @@
+SHELL := /usr/bin/env bash
+.DEFAULT_GOAL := help
+.SHELLFLAGS := -eu -o pipefail -c
+
+# --- ground truth (Phase 0) -------------------------------------------------
+
+.PHONY: help
+help: ## Show this help
+	@echo "zero-trust-gitops-platform — available targets:"
+	@grep -hE '^[a-zA-Z0-9_-]+:.*?## .*$$' $(MAKEFILE_LIST) | \
+		awk 'BEGIN {FS = ":.*?## "}; {printf "  \033[36m%-22s\033[0m %s\n", $$1, $$2}'
+
+.PHONY: tools
+tools: ## Install pinned CLI tools (mise if present, otherwise go install fallback)
+	@if command -v mise >/dev/null 2>&1; then \
+		mise install; \
+	else \
+		echo "mise not found; installing what's go-installable per docs/versions.md"; \
+		GOBIN=$$(go env GOPATH)/bin go install github.com/kyverno/kyverno/cmd/cli/kubectl-kyverno@v1.19.1; \
+	fi
+
+.PHONY: lint
+lint: ## Run pre-commit (fmt, lint, gitleaks, secret guard) across this project
+	pre-commit run --all-files -c .pre-commit-config.yaml
+
+.PHONY: lint-fast
+lint-fast: ## Same as lint, but only against files changed from origin/main (used by the Stop hook)
+	pre-commit run -c .pre-commit-config.yaml --from-ref origin/main --to-ref HEAD || true
+
+.PHONY: build
+build: ## Build the demo-api Go binary (Phase 1)
+	@echo "not yet implemented (Phase 1)"; exit 1
+
+.PHONY: test
+test: ## Run unit tests (Phase 1)
+	@echo "not yet implemented (Phase 1)"; exit 1
+
+.PHONY: image
+image: ## Build the demo-api container image (Phase 1)
+	@echo "not yet implemented (Phase 1)"; exit 1
+
+.PHONY: policy-catalog
+policy-catalog: ## Regenerate docs/policy-catalog.md from policies/ annotations (Phase 3)
+	@echo "not yet implemented (Phase 3)"; exit 1
+
+.PHONY: verify-chain
+verify-chain: ## cosign verify + verify-attestation + Rekor lookup for a given DIGEST (Phase 4)
+	@echo "not yet implemented (Phase 4)"; exit 1
+
+.PHONY: demo
+demo: ## Bring up the full kind + Argo CD + Kyverno GitOps loop (Phase 5-6)
+	@echo "not yet implemented (Phase 5/6)"; exit 1
+
+.PHONY: demo-attack
+demo-attack: ## Run the six attack scenarios against the kind demo (Phase 7)
+	@echo "not yet implemented (Phase 7)"; exit 1
+
+.PHONY: verify
+verify: ## Run every gate this repo claims passes (lint + test + policy-test + demo-attack)
+	@echo "not yet implemented — will chain the above once they exist"; exit 1
+
+.PHONY: clean
+clean: ## Tear down the local kind cluster and remove generated artefacts
+	@echo "not yet implemented (Phase 5/6)"; exit 1

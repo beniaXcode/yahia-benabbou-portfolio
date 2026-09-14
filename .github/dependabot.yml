@@ -1,0 +1,33 @@
+version: 2
+updates:
+  - package-ecosystem: "github-actions"
+    directory: "/"
+    labels: ["dependencies", "zero-trust-gitops-platform"]
+    commit-message:
+      prefix: "chore(zero-trust-gitops-platform)"
+    schedule:
+      interval: "weekly"
+
+  - package-ecosystem: "docker"
+    directory: "/zero-trust-gitops-platform/apps/demo-api"
+    labels: ["dependencies", "zero-trust-gitops-platform"]
+    commit-message:
+      prefix: "chore(zero-trust-gitops-platform)"
+    schedule:
+      interval: "weekly"
+
+  - package-ecosystem: "gomod"
+    directory: "/zero-trust-gitops-platform/apps/demo-api"
+    labels: ["dependencies", "zero-trust-gitops-platform"]
+    commit-message:
+      prefix: "chore(zero-trust-gitops-platform)"
+    schedule:
+      interval: "weekly"
+
+  - package-ecosystem: "terraform"
+    directory: "/zero-trust-gitops-platform/infra/terraform"
+    labels: ["dependencies", "zero-trust-gitops-platform"]
+    commit-message:
+      prefix: "chore(zero-trust-gitops-platform)"
+    schedule:
+      interval: "weekly"
