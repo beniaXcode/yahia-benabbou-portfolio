@@ -56,7 +56,12 @@ markdown_extensions:
   - admonition
   - pymdownx.superfences
 
+not_in_nav: |
+  case-study/*.md
+
 validation:
-  omitted_files: warn
-  absolute_links: warn
-  unrecognized_links: warn
+  nav:
+    omitted_files: warn
+    absolute_links: warn
+  links:
+    unrecognized_links: warn
