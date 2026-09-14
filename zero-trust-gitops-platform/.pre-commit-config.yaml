@@ -12,7 +12,7 @@ repos:
         files: ^zero-trust-gitops-platform/
       - id: check-merge-conflict
       - id: check-yaml
-        files: ^zero-trust-gitops-platform/.*\.ya?ml$
+        files: ^(zero-trust-gitops-platform/.*|\.github/.*)\.ya?ml$
         args: [--allow-multiple-documents]
       - id: check-added-large-files
         args: [--maxkb=1024]
@@ -37,7 +37,13 @@ repos:
         name: yamllint
         entry: yamllint -c zero-trust-gitops-platform/.yamllint.yaml
         language: system
-        files: ^zero-trust-gitops-platform/.*\.ya?ml$
+        files: ^(zero-trust-gitops-platform/.*|\.github/.*)\.ya?ml$
+
+      - id: actionlint
+        name: actionlint
+        entry: actionlint
+        language: system
+        files: ^\.github/workflows/.*\.ya?ml$
 
       - id: gitleaks
         name: gitleaks protect (staged changes)

@@ -1,0 +1,91 @@
+name: IaC Scan
+
+# No AWS account backs this repo (see docs/fidelity.md), so — same as
+# local development — every terraform plan here runs against dummy static
+# credentials with the AWS provider's skip_* validation flags, never a
+# real account. That's enough to validate, plan, and policy-test every
+# module; it does not attempt a real apply.
+
+on:
+  push:
+    branches: [main]
+    paths:
+      - "zero-trust-gitops-platform/infra/terraform/**"
+  pull_request:
+    branches: [main]
+    paths:
+      - "zero-trust-gitops-platform/infra/terraform/**"
+  workflow_dispatch: {}
+
+permissions:
+  contents: read
+
+env:
+  TF_DIR: zero-trust-gitops-platform/infra/terraform
+  AWS_ACCESS_KEY_ID: test
+  AWS_SECRET_ACCESS_KEY: test
+  AWS_DEFAULT_REGION: us-east-1
+
+jobs:
+  tflint:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+      - name: Install tflint
+        run: curl -sSfL https://raw.githubusercontent.com/terraform-linters/tflint/master/install_linux.sh | bash -s -- v0.64.0 /usr/local/bin
+      - name: tflint every module and env
+        run: |
+          fail=0
+          for d in "$TF_DIR"/modules/*/ "$TF_DIR"/envs/dev; do
+            (cd "$d" && tflint) || fail=1
+          done
+          exit $fail
+
+  checkov:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+      - uses: actions/setup-python@5fda3b95a4ea91299a34e894583c3862153e4b97 # v7.0.0
+        with:
+          python-version: "3.12"
+      - name: Install and run checkov
+        run: |
+          pip install --quiet checkov==3.3.17
+          checkov -d "$TF_DIR" --config-file "$TF_DIR/.checkov.yaml"
+
+  terraform-validate-and-test:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+      - uses: hashicorp/setup-terraform@dfe3c3f87815947d99a8997f908cb6525fc44e9e # v4.0.1
+        with:
+          terraform_version: "1.16.2"
+      - name: terraform fmt -check
+        run: terraform fmt -check -recursive "$TF_DIR"
+      - name: terraform validate — every module and envs/dev
+        run: |
+          fail=0
+          for d in "$TF_DIR"/modules/*/ "$TF_DIR"/envs/dev; do
+            echo "== $d =="
+            (cd "$d" && terraform init -input=false -backend=false >/dev/null && terraform validate) || fail=1
+          done
+          exit $fail
+      - name: terraform test — github-oidc-provider (mock_provider, no AWS needed)
+        run: |
+          cd "$TF_DIR/tests"
+          terraform init -input=false -backend=false
+          terraform test
+
+  conftest-policy-fixtures:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+      - uses: hashicorp/setup-terraform@dfe3c3f87815947d99a8997f908cb6525fc44e9e # v4.0.1
+        with:
+          terraform_version: "1.16.2"
+      - name: Install conftest
+        run: |
+          curl -sSfLo /tmp/conftest.tar.gz "https://github.com/open-policy-agent/conftest/releases/download/v0.70.0/conftest_0.70.0_Linux_x86_64.tar.gz"
+          tar -xzf /tmp/conftest.tar.gz -C /usr/local/bin conftest
+      - name: Plan every pass/fail fixture and assert the expected conftest verdict
+        run: bash "$TF_DIR/policy/run-fixture-tests.sh"

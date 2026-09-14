@@ -9,8 +9,20 @@ fail=0
 
 echo "==> checking for GitHub Actions secrets other than GITHUB_TOKEN"
 if [ -d "$root/../.github/workflows" ]; then
-  matches="$(grep -rEn 'secrets\.[A-Za-z0-9_]+' "$root/../.github/workflows" 2>/dev/null \
-    | grep -Ev 'secrets\.GITHUB_TOKEN\b' || true)"
+  # Matches only an actual expression reference (${{ secrets.X }} or the
+  # secrets['X'] bracket form) rather than any prose/filename that happens
+  # to contain the substring "secrets." (e.g. this script's own name).
+  #
+  # The registry-password exclusion below is slsa-provenance.yml forwarding
+  # its own declared workflow_call secret input (named to match the upstream
+  # SLSA generator's expected parameter) to a nested reusable workflow; its
+  # only caller (build-sign-attest.yml) fills it with secrets.GITHUB_TOKEN,
+  # so it is not a new repo/environment secret. See .gitleaks.toml for the
+  # same documented exception.
+  matches="$(grep -rEn '\{\{[^}]*secrets(\.[A-Za-z0-9_]+|\[.[A-Za-z0-9_-]+.\])' \
+    --include='*.yml' --include='*.yaml' "$root/../.github/workflows" 2>/dev/null \
+    | grep -Ev 'secrets\.GITHUB_TOKEN\b' \
+    | grep -Ev "secrets\[.registry-password.\]" || true)"
   if [ -n "$matches" ]; then
     echo "FAIL: workflow(s) reference a secret other than GITHUB_TOKEN:"
     echo "$matches"

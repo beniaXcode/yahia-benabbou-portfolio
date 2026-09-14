@@ -1,0 +1,65 @@
+name: Policy Test
+
+on:
+  push:
+    branches: [main]
+    paths:
+      - "zero-trust-gitops-platform/policies/**"
+  pull_request:
+    branches: [main]
+    paths:
+      - "zero-trust-gitops-platform/policies/**"
+  workflow_dispatch: {}
+
+permissions:
+  contents: read
+
+jobs:
+  kyverno-test:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+
+      - uses: actions/setup-go@b7ad1dad31e06c5925ef5d2fc7ad053ef454303e # v7.0.0
+        with:
+          go-version: "1.27.1"
+
+      - name: Build kyverno-cli from source
+        # go.mod carries `replace` directives, which Go refuses for a
+        # remote `go install` — building from a real clone works.
+        run: |
+          git clone --depth 1 --branch v1.19.1 https://github.com/kyverno/kyverno /tmp/kyverno
+          (cd /tmp/kyverno && go build -o /usr/local/bin/kyverno ./cmd/cli/kubectl-kyverno)
+
+      - name: kyverno test policies/
+        run: kyverno test zero-trust-gitops-platform/policies/
+
+      - name: Assert every generate-rule exclusion (kube-system is skipped)
+        run: bash zero-trust-gitops-platform/policies/tests/run-generate-exclusion-tests.sh
+
+      - name: Regenerate docs/policy-catalog.md and fail if it drifted
+        run: |
+          curl -sSfLo /usr/local/bin/yq "https://github.com/mikefarah/yq/releases/download/v4.53.6/yq_linux_amd64"
+          chmod +x /usr/local/bin/yq
+          bash zero-trust-gitops-platform/tools/gen-policy-catalog.sh
+          git diff --exit-code zero-trust-gitops-platform/docs/policy-catalog.md
+
+  chainsaw:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+
+      - uses: actions/setup-go@b7ad1dad31e06c5925ef5d2fc7ad053ef454303e # v7.0.0
+        with:
+          go-version: "1.27.1"
+
+      - name: Install chainsaw
+        run: go install github.com/kyverno/chainsaw@v0.2.15
+
+      - name: Run e2e admission tests (Phase 5+ — no-op until test/e2e/ has chainsaw tests)
+        run: |
+          if [ -z "$(find zero-trust-gitops-platform/test/e2e -name '*.yaml' 2>/dev/null)" ]; then
+            echo "No chainsaw tests under test/e2e/ yet."
+            exit 0
+          fi
+          "$(go env GOPATH)/bin/chainsaw" test zero-trust-gitops-platform/test/e2e/

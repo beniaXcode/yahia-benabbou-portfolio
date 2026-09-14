@@ -36,6 +36,7 @@ spec:
         - mutateDigest: false
           imageReferences:
             - "*.dkr.ecr.*.amazonaws.com/zero-trust-gitops-platform/*"
+            - "ghcr.io/beniaxcode/yahia-benabbou-portfolio/*"
           attestors:
             - entries:
                 - keyless:

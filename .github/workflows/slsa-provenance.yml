@@ -1,0 +1,40 @@
+name: SLSA Build L3 Provenance
+
+# Thin wrapper around the upstream SLSA Build L3 generator for containers,
+# called as a job from build-sign-attest.yml. Kept as its own file (per
+# BRIEF.md's file tree) so the provenance-generation step is a clearly
+# separate, independently reviewable concern from the build/sign/SBOM job.
+
+on:
+  workflow_call:
+    inputs:
+      image:
+        description: "Fully-qualified image name, e.g. ghcr.io/owner/repo/image (no tag or digest)."
+        required: true
+        type: string
+      digest:
+        description: "The digest of the image to attest, e.g. sha256:...."
+        required: true
+        type: string
+    secrets:
+      registry-password:
+        description: "Credential the generator uses to push the provenance attestation alongside the image."
+        required: true
+
+permissions: {}
+
+jobs:
+  provenance:
+    permissions:
+      actions: read
+      id-token: write
+      packages: write
+      contents: read
+    # v2.1.0 — see zero-trust-gitops-platform/docs/versions.md
+    uses: slsa-framework/slsa-github-generator/.github/workflows/generator_container_slsa3.yml@f7dd8c54c2067bafc12ca7a55595d5ee9b75204a
+    with:
+      image: ${{ inputs.image }}
+      digest: ${{ inputs.digest }}
+      registry-username: ${{ github.actor }}
+    secrets:
+      registry-password: ${{ secrets['registry-password'] }}

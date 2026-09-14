@@ -27,18 +27,20 @@ description = "A cosign private key must never be committed (keyless signing onl
 regex = '''-----BEGIN (ENCRYPTED SIGSTORE|EC|RSA|OPENSSH) PRIVATE KEY-----'''
 tags = ["key", "sigstore"]
 
-[[rules]]
-id = "github-actions-non-github-token-secret"
-description = "A GitHub Actions workflow referencing a secrets.* entry (violates C1 unless it is exactly secrets.GITHUB_TOKEN, which the allowlist below excludes)"
-regex = '''secrets\.[A-Za-z0-9_]+'''
-path = '''\.github/workflows/.*\.ya?ml$'''
-tags = ["ci", "secret"]
+# Deliberately no custom rule here for "a workflow references secrets.X other
+# than GITHUB_TOKEN": gitleaks is a literal-secret-*value* scanner, and its own
+# default config (config/gitleaks.toml, loaded above via useDefault) globally
+# allowlists the ${{ secrets.X }} / ${{ vars.X }} *expression syntax* itself as
+# a template placeholder, for any X — by design, since referencing a secret by
+# name is not the same as leaking its value. A custom rule targeting that
+# syntax is therefore unconditionally suppressed by the extended default
+# allowlist and can never fire (confirmed by testing). C1 (no GitHub Actions
+# secret besides GITHUB_TOKEN) is a repo *policy* check, not a secret-value
+# check, so it is enforced instead by tools/check-no-secrets.sh, wired into
+# both pre-commit and .github/workflows/verify-no-secrets.yml.
 
 [allowlist]
 description = "known-safe patterns"
-regexes = [
-  '''secrets\.GITHUB_TOKEN''',
-]
 paths = [
   '''\.gitleaks\.toml''',
 ]

@@ -1,0 +1,101 @@
+name: CI
+
+on:
+  push:
+    branches: [main]
+  pull_request:
+    branches: [main]
+  workflow_dispatch: {}
+
+permissions:
+  contents: read
+
+env:
+  APP_DIR: zero-trust-gitops-platform/apps/demo-api
+
+jobs:
+  lint-and-test-app:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout
+        uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+
+      - name: Set up Go
+        uses: actions/setup-go@b7ad1dad31e06c5925ef5d2fc7ad053ef454303e # v7.0.0
+        with:
+          go-version-file: ${{ env.APP_DIR }}/go.mod
+
+      - name: gofmt -l (fails if anything is unformatted)
+        run: |
+          out="$(gofmt -l "$APP_DIR")"
+          if [ -n "$out" ]; then echo "$out"; exit 1; fi
+
+      - name: go vet
+        run: cd "$APP_DIR" && go vet ./...
+
+      - name: go test
+        run: cd "$APP_DIR" && go test ./... -v
+
+      - name: go build (same flags as make build)
+        run: |
+          cd "$APP_DIR"
+          CGO_ENABLED=0 go build -trimpath -ldflags "-s -w -X main.version=ci -X main.commit=${GITHUB_SHA:0:7} -X main.buildDate=$(date -u +%Y-%m-%dT%H:%M:%SZ)" -o bin/demo-api .
+
+  gitleaks:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout
+        uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          fetch-depth: 0
+
+      - name: Set up Go
+        uses: actions/setup-go@b7ad1dad31e06c5925ef5d2fc7ad053ef454303e # v7.0.0
+        with:
+          go-version: "1.27.1"
+
+      - name: Install and run gitleaks
+        run: |
+          go install github.com/zricethezav/gitleaks/v8@v8.30.1
+          "$(go env GOPATH)/bin/gitleaks" detect --source . --config .gitleaks.toml --redact -v
+
+  shift-left-admission-preview:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout
+        uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+
+      - name: Set up Go
+        uses: actions/setup-go@b7ad1dad31e06c5925ef5d2fc7ad053ef454303e # v7.0.0
+        with:
+          go-version: "1.27.1"
+
+      - name: Install kustomize
+        run: curl -sSfL "https://raw.githubusercontent.com/kubernetes-sigs/kustomize/master/hack/install_kustomize.sh" | bash -s -- /usr/local/bin
+
+      - name: Build kyverno-cli from source
+        # go.mod carries `replace` directives, which Go refuses for a
+        # remote `go install` — building from a real clone works (proven in
+        # this repo's own history: see docs/fidelity.md).
+        run: |
+          git clone --depth 1 --branch v1.19.1 https://github.com/kyverno/kyverno /tmp/kyverno
+          (cd /tmp/kyverno && go build -o /usr/local/bin/kyverno ./cmd/cli/kubectl-kyverno)
+
+      - name: Render every overlay and run this repo's own Kyverno policies against it
+        # The same policies/ directory the admission controller uses (C8) —
+        # one source of truth, exercised at both enforcement points.
+        run: |
+          shopt -s nullglob
+          overlays=(zero-trust-gitops-platform/gitops/apps/*/overlays/*/)
+          if [ ${#overlays[@]} -eq 0 ]; then
+            echo "No overlays under gitops/apps/*/overlays/* yet — nothing to render."
+            exit 0
+          fi
+          fail=0
+          for overlay in "${overlays[@]}"; do
+            echo "== rendering $overlay =="
+            rendered="$(mktemp).yaml"
+            kustomize build "$overlay" > "$rendered"
+            kyverno apply zero-trust-gitops-platform/policies/ --resource "$rendered" --policy-report || fail=1
+          done
+          exit $fail

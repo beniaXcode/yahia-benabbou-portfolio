@@ -36,6 +36,7 @@ spec:
         - mutateDigest: false
           imageReferences:
             - "*.dkr.ecr.*.amazonaws.com/zero-trust-gitops-platform/*"
+            - "ghcr.io/beniaxcode/yahia-benabbou-portfolio/*"
           # subject/issuer identify the exact workflow that is allowed to
           # produce a signature Kyverno will accept — this is what makes
           # "verify who built it" true rather than "verify something

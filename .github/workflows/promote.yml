@@ -1,0 +1,84 @@
+name: Promote digest to environment overlay
+
+# Called from build-sign-attest.yml once an image has been built, signed,
+# and attested. Opens a PR that bumps ONLY the image digest in one
+# environment's Kustomize overlay — Argo CD then reconciles that overlay
+# once the PR merges. This is the one path by which a new image reaches
+# any environment; nothing else edits gitops/apps/demo-api/overlays/*.
+
+on:
+  workflow_call:
+    inputs:
+      environment:
+        description: "Which overlay to bump: dev, staging, or prod."
+        required: true
+        type: string
+      image-ref:
+        description: "Full image@digest reference."
+        required: true
+        type: string
+      digest:
+        description: "The image digest alone (sha256:...)."
+        required: true
+        type: string
+      rekor-log-index:
+        description: "Rekor transparency log index for this image's signature, if it could be determined."
+        required: false
+        type: string
+        default: ""
+
+permissions: {}
+
+jobs:
+  promote:
+    runs-on: ubuntu-latest
+    permissions:
+      contents: write
+      pull-requests: write
+    env:
+      OVERLAY: zero-trust-gitops-platform/gitops/apps/demo-api/overlays/${{ inputs.environment }}
+    steps:
+      - name: Checkout
+        uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+
+      - name: Install kustomize
+        run: |
+          curl -sSfL "https://raw.githubusercontent.com/kubernetes-sigs/kustomize/master/hack/install_kustomize.sh" | bash -s -- /usr/local/bin
+
+      - name: Set the new digest in the overlay's kustomization.yaml
+        env:
+          IMAGE_NAME: ${{ inputs.image-ref }}
+        run: |
+          cd "$OVERLAY"
+          repo="${IMAGE_NAME%@*}"
+          kustomize edit set image "demo-api=${repo}@${{ inputs.digest }}"
+
+      - name: Open the promotion PR
+        uses: peter-evans/create-pull-request@98357b18bf14b5342f975ff684046ec3b2a07725 # v8.0.0
+        with:
+          token: ${{ secrets.GITHUB_TOKEN }}
+          branch: promote/${{ inputs.environment }}-${{ inputs.digest }}
+          add-paths: |
+            zero-trust-gitops-platform/gitops/apps/demo-api/overlays/${{ inputs.environment }}/kustomization.yaml
+          commit-message: "chore(gitops): promote demo-api to ${{ inputs.image-ref }} (${{ inputs.environment }})"
+          title: "Promote demo-api to ${{ inputs.environment }}: ${{ inputs.digest }}"
+          labels: promotion
+          body: |
+            Promotes `demo-api` in the **${{ inputs.environment }}** overlay to:
+
+            ```
+            ${{ inputs.image-ref }}
+            ```
+
+            **Verify this image yourself before approving:**
+            ```
+            cosign verify ${{ inputs.image-ref }} \
+              --certificate-identity-regexp "^https://github.com/beniaXcode/yahia-benabbou-portfolio/.github/workflows/build-sign-attest.yml@refs/heads/main$" \
+              --certificate-oidc-issuer "https://token.actions.githubusercontent.com"
+            ```
+
+            Rekor transparency log index: `${{ inputs.rekor-log-index }}`
+            (https://search.sigstore.dev/?logIndex=${{ inputs.rekor-log-index }})
+
+            Merging this PR is what causes Argo CD to actually deploy the new
+            digest to **${{ inputs.environment }}** — nothing else does.

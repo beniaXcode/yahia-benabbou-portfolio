@@ -9,14 +9,19 @@ metadata:
     policies.kyverno.io/subject: Pod
     policies.kyverno.io/description: >-
       Every container and initContainer image must come from this
-      account's own ECR — no Docker Hub, no GHCR, no other registry.
+      project's own registry — either its ECR repository (the Terraform-
+      provisioned production target, see infra/terraform/modules/ecr) or
+      its GHCR namespace (what this specific deployment's CI actually
+      pushes to, since no AWS account backs it — see docs/fidelity.md).
+      No Docker Hub, no arbitrary third-party registry.
     nearvic.io/rationale: >-
       Signature verification only means something if the signer's identity
       also implies where the image lives. Allowing arbitrary registries
       would let an attacker who compromises any credential with cluster
       write access deploy an image from a registry this platform never
       pushes to or scans, sidestepping the ECR-side push/pull IAM scoping
-      in infra/terraform/modules/ecr entirely.
+      in infra/terraform/modules/ecr (or GHCR's equivalent package
+      permissions) entirely.
     nearvic.io/compliance: "NIST SSDF PO.5.1, CIS EKS 5.4.1, SOC 2 CC6.1"
 spec:
   validationFailureAction: Audit
@@ -29,12 +34,15 @@ spec:
               kinds:
                 - Pod
       validate:
-        message: "Images must come from this project's own ECR registry (*.dkr.ecr.*.amazonaws.com/zero-trust-gitops-platform/*)."
+        message: "Images must come from this project's own ECR repository or its ghcr.io/beniaxcode/yahia-benabbou-portfolio namespace."
         foreach:
           - list: "request.object.spec.containers"
             deny:
               conditions:
-                any:
+                all:
                   - key: "{{ element.image }}"
                     operator: NotEquals
                     value: "*.dkr.ecr.*.amazonaws.com/zero-trust-gitops-platform/*"
+                  - key: "{{ element.image }}"
+                    operator: NotEquals
+                    value: "ghcr.io/beniaxcode/yahia-benabbou-portfolio/*"

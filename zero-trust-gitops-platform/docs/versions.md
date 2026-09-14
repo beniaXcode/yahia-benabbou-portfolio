@@ -30,6 +30,14 @@ instead, both of which mirror the real upstream release tag:
   `HEAD` on `/v2/<repo>/manifests/<tag>` with an OCI-index/manifest-list
   `Accept` header returns the real `Docker-Content-Digest` for a base image
   — used for `apps/demo-api/Dockerfile`'s two `FROM` lines (see below).
+- **`git ls-remote --tags <https-url>`** (discovered in Phase 4): although
+  `api.github.com` and the `github.com` web/API surface are blocked from
+  this sandbox, plain anonymous git-protocol reads of any public repository
+  are not — `git ls-remote --tags https://github.com/<owner>/<repo>` returns
+  every tag's exact commit SHA directly, which is exactly what pinning a
+  GitHub Action needs. This is how every Action SHA below was resolved; it
+  supersedes Phase 0's assumption that Action SHAs would have to stay
+  deferred for lack of GitHub access.
 
 Where neither source is reliable (see "Deferred" below), the version is
 resolved in the phase that first consumes it, against a reachable source at
@@ -88,6 +96,41 @@ See `docs/fidelity.md` for how `terraform init`/`plan`/`test` actually ran
 against this provider in a sandbox where `registry.terraform.io` itself is
 blocked.
 
+## GitHub Actions (`.github/workflows/`)
+
+`api.github.com`/`github.com` are scoped to this session's own repo (see
+`docs/fidelity.md`), which blocks the usual `gh release view`/API lookup —
+but `git ls-remote --tags <repo-url>` works over the plain git protocol
+(anonymous reads of any public repo are allowed) and gives the exact commit
+each tag points at directly, which is what "pinned to a SHA" actually
+needs. Resolved that way, highest semantic-version tag per action, all on
+2026-09-14 (Phase 4):
+
+| Action | Version | SHA |
+|---|---|---|
+| `actions/checkout` | v7.0.1 | `3d3c42e5aac5ba805825da76410c181273ba90b1` |
+| `actions/setup-go` | v7.0.0 | `b7ad1dad31e06c5925ef5d2fc7ad053ef454303e` |
+| `actions/setup-python` | v7.0.0 | `5fda3b95a4ea91299a34e894583c3862153e4b97` |
+| `actions/upload-artifact` | v7.0.1 | `043fb46d1a93c77aae656e7c1c64a875d1fc6a0a` |
+| `actions/download-artifact` | v8.0.1 | `3e5f45b2cfb9172054b4087a40e8e0b5a5461e7c` |
+| `docker/setup-buildx-action` | v4.3.0 | `37fe631027851001ddb9b187196cc803df7f5f0e` |
+| `docker/login-action` | v4.6.0 | `dbcb813823bdd20940b903addbd779551569679f` |
+| `docker/build-push-action` | v7.3.0 | `53b7df96c91f9c12dcc8a07bcb9ccacbed38856a` |
+| `sigstore/cosign-installer` | v4.1.2 | `6f9f17788090df1f26f669e9d70d6ae9567deba6` |
+| `slsa-framework/slsa-github-generator` (`generator_container_slsa3.yml`) | v2.1.0 | `f7dd8c54c2067bafc12ca7a55595d5ee9b75204a` |
+| `peter-evans/create-pull-request` | v8.0.0 | `98357b18bf14b5342f975ff684046ec3b2a07725` |
+| `github/codeql-action` (`init`/`autobuild`/`analyze`/`upload-sarif`) | v4.38.0 | `4bd7200e1f146b1c937cae12d258b50f41a53cf8` |
+| `ossf/scorecard-action` | v2.4.4 | `55891bbd73f2425e97637d96e306fc9d491d0b21` |
+| `hashicorp/setup-terraform` | v4.0.1 | `dfe3c3f87815947d99a8997f908cb6525fc44e9e` |
+
+Not pinned to a SHA (installed directly from a release asset or built from
+source inside the workflow instead — see the workflow files themselves):
+`syft`, `grype` (Anchore's own `install.sh`, version passed explicitly),
+`gitleaks` and `kyverno-cli` (built from source — `go install` fails on
+both for unrelated reasons, see `docs/fidelity.md` — pinned by git tag/Go
+module version instead of a SHA), `kustomize`, `conftest`, `yq`, `tflint`
+(direct release-asset URLs, version embedded in the URL itself).
+
 ## Deferred — resolved when the phase that consumes them starts
 
 Go-module resolution is only trustworthy when the module's import path
@@ -108,7 +151,7 @@ for why those specific lookups aren't reachable from this sandbox.
 |---|---|---|
 | `sigstore/scaffolding` chart/manifest version | GitHub-hosted, not a Go module release scheme this proxy can resolve | Phase 5/6 (local Fulcio/Rekor for the kind demo) |
 | SLSA Build L3 generator reusable-workflow tag | Consumed by ref (`@vX.Y.Z`), GitHub-hosted | Phase 4 (build-sign-attest.yml) |
-| Every third-party GitHub Action commit SHA (`actions/checkout`, `docker/build-push-action`, `sigstore/cosign-installer`, `aws-actions/configure-aws-credentials`, `anchore/sbom-action`, `github/codeql-action`, `ossf/scorecard-action`, `googleapis/release-please-action`, etc.) | `github.com`/`api.github.com` access from this sandbox is scoped to this session's own repo; each action's repo would need to be attached individually right before its workflow is authored | Whichever workflow first references it (Phases 3-9) |
+| `googleapis/release-please-action` SHA | Not yet used — `release.yml` is a later phase | Phase 9 (release) |
 
 ## CLI availability in this sandbox (informational, not a version claim)
 

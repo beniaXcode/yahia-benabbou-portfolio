@@ -1,0 +1,179 @@
+name: Build, Sign, and Attest
+
+# Pushes to ghcr.io (not ECR): this deployment has no AWS account behind
+# it, and BRIEF.md explicitly allows that fallback — see
+# zero-trust-gitops-platform/docs/fidelity.md. The infra/terraform/modules/ecr
+# module remains the documented production target for anyone applying this
+# with a real AWS account; only the registry destination changes, not the
+# rest of the chain (keyless signing, SBOM, SLSA provenance, self-verify).
+#
+# C1: the only secret referenced anywhere below is the automatic
+# GITHUB_TOKEN. No AWS credential of any kind is used — pushing to GHCR
+# needs none.
+
+on:
+  push:
+    branches: [main]
+    paths:
+      - "zero-trust-gitops-platform/apps/demo-api/**"
+      - ".github/workflows/build-sign-attest.yml"
+  workflow_dispatch: {}
+
+permissions:
+  contents: read
+
+env:
+  REGISTRY: ghcr.io
+  IMAGE_NAME: beniaxcode/yahia-benabbou-portfolio/demo-api
+  APP_DIR: zero-trust-gitops-platform/apps/demo-api
+
+jobs:
+  build-sign-attest:
+    runs-on: ubuntu-latest
+    permissions:
+      contents: read
+      packages: write
+      id-token: write
+      attestations: write
+    outputs:
+      image: ${{ steps.vars.outputs.image }}
+      digest: ${{ steps.push.outputs.digest }}
+      image-ref: ${{ steps.vars.outputs.image }}@${{ steps.push.outputs.digest }}
+      rekor-log-index: ${{ steps.sign.outputs.rekor-log-index }}
+    steps:
+      - name: Checkout
+        uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+
+      - name: Compute build vars
+        id: vars
+        run: |
+          echo "image=${REGISTRY}/${IMAGE_NAME}" >> "$GITHUB_OUTPUT"
+          echo "commit=${GITHUB_SHA:0:7}" >> "$GITHUB_OUTPUT"
+
+      - name: Set up Docker Buildx
+        uses: docker/setup-buildx-action@37fe631027851001ddb9b187196cc803df7f5f0e # v4.3.0
+
+      - name: Log in to GHCR
+        uses: docker/login-action@dbcb813823bdd20940b903addbd779551569679f # v4.6.0
+        with:
+          registry: ${{ env.REGISTRY }}
+          username: ${{ github.actor }}
+          password: ${{ secrets.GITHUB_TOKEN }}
+
+      - name: Build and push by digest
+        id: push
+        uses: docker/build-push-action@53b7df96c91f9c12dcc8a07bcb9ccacbed38856a # v7.3.0
+        with:
+          context: ${{ env.APP_DIR }}
+          push: true
+          tags: ${{ steps.vars.outputs.image }}:${{ steps.vars.outputs.commit }}
+          build-args: |
+            VERSION=${{ steps.vars.outputs.commit }}
+            COMMIT=${{ github.sha }}
+            BUILD_DATE=${{ github.event.repository.updated_at }}
+          provenance: true
+          sbom: false # this job generates its own SBOM via syft below, attested separately
+
+      - name: Install cosign
+        uses: sigstore/cosign-installer@6f9f17788090df1f26f669e9d70d6ae9567deba6 # v4.1.2
+
+      - name: Install syft and grype
+        # Versions pinned to match zero-trust-gitops-platform/docs/versions.md.
+        run: |
+          curl -sSfL https://raw.githubusercontent.com/anchore/syft/main/install.sh | sh -s -- -b /usr/local/bin v1.51.1
+          curl -sSfL https://raw.githubusercontent.com/anchore/grype/main/install.sh | sh -s -- -b /usr/local/bin v0.118.0
+
+      - name: Generate SBOM (SPDX + CycloneDX)
+        env:
+          IMAGE_REF: ${{ steps.vars.outputs.image }}@${{ steps.push.outputs.digest }}
+        run: |
+          syft "$IMAGE_REF" -o spdx-json="sbom.spdx.json"
+          syft "$IMAGE_REF" -o cyclonedx-json="sbom.cyclonedx.json"
+
+      - name: Vulnerability gate (grype)
+        env:
+          IMAGE_REF: ${{ steps.vars.outputs.image }}@${{ steps.push.outputs.digest }}
+        run: |
+          grype "$IMAGE_REF" --fail-on critical -o table
+          grype "$IMAGE_REF" --only-fixed --fail-on high -o table
+
+      - name: cosign sign (keyless)
+        id: sign
+        env:
+          IMAGE_REF: ${{ steps.vars.outputs.image }}@${{ steps.push.outputs.digest }}
+          COSIGN_EXPERIMENTAL: "1"
+        run: |
+          cosign sign --yes "$IMAGE_REF" 2>&1 | tee cosign-sign.log
+          rekor_index="$(grep -oE 'tlog entry created with index: [0-9]+' cosign-sign.log | grep -oE '[0-9]+$' || true)"
+          echo "rekor-log-index=${rekor_index}" >> "$GITHUB_OUTPUT"
+
+      - name: cosign attest SBOM (CycloneDX)
+        env:
+          IMAGE_REF: ${{ steps.vars.outputs.image }}@${{ steps.push.outputs.digest }}
+          COSIGN_EXPERIMENTAL: "1"
+        run: |
+          cosign attest --yes \
+            --predicate sbom.cyclonedx.json \
+            --type cyclonedx \
+            "$IMAGE_REF"
+
+      - name: cosign attest SBOM (SPDX)
+        env:
+          IMAGE_REF: ${{ steps.vars.outputs.image }}@${{ steps.push.outputs.digest }}
+          COSIGN_EXPERIMENTAL: "1"
+        run: |
+          cosign attest --yes \
+            --predicate sbom.spdx.json \
+            --type spdx \
+            "$IMAGE_REF"
+
+      - name: Self-check — cosign verify (the exact command the README publishes)
+        env:
+          IMAGE_REF: ${{ steps.vars.outputs.image }}@${{ steps.push.outputs.digest }}
+        run: |
+          cosign verify "$IMAGE_REF" \
+            --certificate-identity-regexp "^https://github.com/beniaXcode/yahia-benabbou-portfolio/.github/workflows/build-sign-attest.yml@refs/heads/main$" \
+            --certificate-oidc-issuer "https://token.actions.githubusercontent.com"
+
+      - name: Self-check — cosign verify-attestation (SBOM)
+        env:
+          IMAGE_REF: ${{ steps.vars.outputs.image }}@${{ steps.push.outputs.digest }}
+        run: |
+          cosign verify-attestation "$IMAGE_REF" \
+            --type cyclonedx \
+            --certificate-identity-regexp "^https://github.com/beniaXcode/yahia-benabbou-portfolio/.github/workflows/build-sign-attest.yml@refs/heads/main$" \
+            --certificate-oidc-issuer "https://token.actions.githubusercontent.com"
+
+      - name: Upload SBOMs
+        uses: actions/upload-artifact@043fb46d1a93c77aae656e7c1c64a875d1fc6a0a # v7.0.1
+        with:
+          name: sboms
+          path: |
+            sbom.spdx.json
+            sbom.cyclonedx.json
+
+  slsa-provenance:
+    needs: build-sign-attest
+    permissions:
+      actions: read
+      id-token: write
+      packages: write
+      contents: read
+    uses: ./.github/workflows/slsa-provenance.yml
+    with:
+      image: ${{ needs.build-sign-attest.outputs.image }}
+      digest: ${{ needs.build-sign-attest.outputs.digest }}
+    secrets:
+      registry-password: ${{ secrets.GITHUB_TOKEN }}
+
+  promote:
+    needs: [build-sign-attest, slsa-provenance]
+    permissions:
+      contents: write
+      pull-requests: write
+    uses: ./.github/workflows/promote.yml
+    with:
+      environment: dev
+      image-ref: ${{ needs.build-sign-attest.outputs.image-ref }}
+      digest: ${{ needs.build-sign-attest.outputs.digest }}
+      rekor-log-index: ${{ needs.build-sign-attest.outputs.rekor-log-index }}
