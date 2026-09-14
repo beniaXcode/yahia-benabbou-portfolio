@@ -2,6 +2,15 @@ SHELL := /usr/bin/env bash
 .DEFAULT_GOAL := help
 .SHELLFLAGS := -eu -o pipefail -c
 
+# --- versioning (Phase 1) ---------------------------------------------------
+
+APP_DIR := apps/demo-api
+VERSION ?= $(shell git describe --tags --always --dirty 2>/dev/null || echo dev)
+COMMIT ?= $(shell git rev-parse --short HEAD 2>/dev/null || echo unknown)
+BUILD_DATE ?= $(shell date -u +%Y-%m-%dT%H:%M:%SZ)
+LDFLAGS := -s -w -X main.version=$(VERSION) -X main.commit=$(COMMIT) -X main.buildDate=$(BUILD_DATE)
+IMAGE ?= demo-api:$(COMMIT)
+
 # --- ground truth (Phase 0) -------------------------------------------------
 
 .PHONY: help
@@ -28,16 +37,18 @@ lint-fast: ## Same as lint, but only against files changed from origin/main (use
 	pre-commit run -c .pre-commit-config.yaml --from-ref origin/main --to-ref HEAD || true
 
 .PHONY: build
-build: ## Build the demo-api Go binary (Phase 1)
-	@echo "not yet implemented (Phase 1)"; exit 1
+build: ## Build the demo-api Go binary into apps/demo-api/bin/
+	cd $(APP_DIR) && CGO_ENABLED=0 go build -trimpath -ldflags "$(LDFLAGS)" -o bin/demo-api .
 
 .PHONY: test
-test: ## Run unit tests (Phase 1)
-	@echo "not yet implemented (Phase 1)"; exit 1
+test: ## Run demo-api's unit tests
+	cd $(APP_DIR) && go vet ./... && go test ./... -v
 
 .PHONY: image
-image: ## Build the demo-api container image (Phase 1)
-	@echo "not yet implemented (Phase 1)"; exit 1
+image: ## Build the demo-api container image (needs a reachable Docker daemon)
+	docker build \
+		--build-arg VERSION=$(VERSION) --build-arg COMMIT=$(COMMIT) --build-arg BUILD_DATE=$(BUILD_DATE) \
+		-t $(IMAGE) -f $(APP_DIR)/Dockerfile $(APP_DIR)
 
 .PHONY: policy-catalog
 policy-catalog: ## Regenerate docs/policy-catalog.md from policies/ annotations (Phase 3)

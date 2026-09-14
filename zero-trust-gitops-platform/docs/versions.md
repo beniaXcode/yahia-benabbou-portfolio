@@ -24,6 +24,12 @@ instead, both of which mirror the real upstream release tag:
 - **PyPI JSON API** (`pypi.org`, directly reachable): `curl
   https://pypi.org/pypi/<package>/json | jq .info.version` for pure-Python
   tools.
+- **Docker Registry HTTP API v2** (`registry-1.docker.io`, `gcr.io` — both
+  reachable, unlike `registry.terraform.io`): an anonymous pull token
+  (`GET /v2/token?service=...&scope=repository:<repo>:pull`) followed by a
+  `HEAD` on `/v2/<repo>/manifests/<tag>` with an OCI-index/manifest-list
+  `Accept` header returns the real `Docker-Content-Digest` for a base image
+  — used for `apps/demo-api/Dockerfile`'s two `FROM` lines (see below).
 
 Where neither source is reliable (see "Deferred" below), the version is
 resolved in the phase that first consumes it, against a reachable source at
@@ -43,6 +49,7 @@ that time, rather than guessed now.
 | grype | v0.118.0 | `go list -m github.com/anchore/grype@latest` | 2026-09-14 |
 | kind | v0.33.0 | `go list -m sigs.k8s.io/kind@latest` | 2026-09-14 |
 | kubectl / Kubernetes | v1.37.0 | `go list -m k8s.io/kubernetes@latest` (kubectl's own module tags as `v0.37.0`, tracking the same minor) | 2026-09-14 |
+| Go (toolchain, and the pin used for `apps/demo-api`'s `go.mod` and its Docker builder stage) | 1.27.1 | `go list -m -versions golang.org/toolchain` (highest `go1.X.Y` listed; go1.26.8 is the prior minor's latest patch) — corrects Phase 0's `mise.toml`, which had wrongly used this sandbox's preinstalled 1.24.7 instead of resolving it the same way as everything else | 2026-09-14 (corrected in Phase 1) |
 | Helm | v3.22.0 | `go list -m helm.sh/helm/v3@latest` | 2026-09-14 |
 | Kustomize | v5.8.1 | `go list -m sigs.k8s.io/kustomize/kustomize/v5@latest` | 2026-09-14 |
 | Terraform (CLI) | v1.16.2 | `go list -m github.com/hashicorp/terraform@latest` | 2026-09-14 |
@@ -59,6 +66,17 @@ that time, rather than guessed now.
 | checkov | v3.3.17 | `pypi.org/pypi/checkov/json` | 2026-09-14 |
 | mkdocs-material | v9.7.7 | `pypi.org/pypi/mkdocs-material/json` | 2026-09-14 |
 | yamllint | v1.38.0 | `pypi.org/pypi/yamllint/json` | 2026-09-14 |
+
+## Container base images (`apps/demo-api/Dockerfile`)
+
+| Stage | Image:tag | Digest | Resolved via | Date |
+|---|---|---|---|---|
+| builder | `golang:1.27.1-alpine` | `sha256:cf6fca6641884b8433441b2b0652976f975e1d0fdd26d177eaaf8596087f3125` | Docker Registry v2 API against `registry-1.docker.io` (see method above) | 2026-09-14 |
+| runtime | `gcr.io/distroless/static-debian12:nonroot` | `sha256:afa5c872c891853ca7fcf1f12c3edb23f7eeef36189728842dd51042ff57f7ab` | Docker Registry v2 API against `gcr.io` | 2026-09-14 |
+
+The runtime stage uses the explicit `-debian12` tag (distroless's current
+recommended form) rather than the legacy bare `distroless/static` alias,
+which also resolves but leaves the OS version implicit.
 
 ## Deferred — resolved when the phase that consumes them starts
 
