@@ -166,3 +166,47 @@ omits role/location/LinkedIn/an availability note from BRIEF.md's author-footer 
 has no verified source for any of those four facts about the repository's author, and Operating
 Rule 4 ("never guess... a plausible-looking wrong [detail] is worse than a question") applies to a
 person's own biography at least as much as to a version number.
+
+## Phase 9 — GitHub repository hardening and release
+
+**Not executed — a genuine tool-access gap, checked directly rather than assumed.** BRIEF.md's own
+Phase 9 assumes `gh` CLI access with `repo`/`admin:repo_hook` scopes. This environment has no `gh`
+CLI at all; the system prompt's own instruction is to use "the GitHub MCP server tools" instead.
+Every tool that server actually exposes was enumerated directly, by searching it for repository
+administration, branch protection, environments, Pages, and release-creation capability: none
+exists. The available surface covers content operations (file read/write, branches, commits),
+pull requests and reviews, issues, tags/releases *read* (not create), and Actions run/artifact
+listing — nothing that reaches `PATCH /repos/{owner}/{repo}`, branch rulesets, environment
+variables, Pages configuration, or `POST /repos/{owner}/{repo}/releases`. This isn't a permission
+this session lacks that another might have by asking differently — the tool simply isn't in the
+server's surface — so the honest thing is to say so plainly rather than attempt a workaround (there
+is no `gh` binary to fall back to, and the system prompt explicitly forbids direct GitHub API
+calls outside the provided tools).
+
+**What was done instead:** `tools/github-hardening.sh`, a real, complete script mirroring
+BRIEF.md's §10 spec exactly — topics, repo settings, security features, the branch ruleset,
+environments (variables only, never secrets — see `docs/identity-model.md`'s note on why an AWS
+role ARN is safe to publish), Pages, and the `v0.1.0` release — for a human with `gh` and admin
+rights on this repository to run by hand, one confirmed command at a time, exactly as BRIEF.md's
+own operating instruction for this phase requires ("print each command before running it, ask for
+confirmation before anything destructive"). It targets the **existing**
+`beniaXcode/yahia-benabbou-portfolio` repository, per this project's own top-level instruction, not
+the new `beniaxcode/zero-trust-gitops-platform` repository BRIEF.md's text assumes before that
+constraint was given.
+
+**A second, independent blocker worth recording even if tool access changes:** the branch
+ruleset's required status checks (`ci`, `policy-test`, `iac-scan`, `e2e-kind`, `verify-no-secrets`)
+can only reference check names GitHub has already recorded at least one run of against this
+repository — they cannot be configured for a workflow that has never executed. Since none of
+`ci.yml`/`iac-scan.yml`/`policy-test.yml`/`e2e-kind.yml`/`verify-no-secrets.yml` has ever run for
+real here (this sandbox cannot trigger a GitHub Actions run — the same gap recorded against every
+earlier phase's CI claims), the exact check-name strings the ruleset needs cannot be filled in
+yet either, independent of who runs the script. `tools/github-hardening.sh` says so inline and
+lists each workflow's current job names as the starting point for whoever finalizes it after this
+branch's first real push.
+
+**Also not done, for the same reason:** repository-wide settings changes here would affect every
+other branch and case study this portfolio repository hosts, not just this project — the risk this
+session flagged before starting Phase 9, which is a second, independent reason (beyond tool access)
+this was left as a reviewable script rather than something to execute unattended even if the tools
+had existed.
