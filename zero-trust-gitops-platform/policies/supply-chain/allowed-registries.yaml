@@ -13,12 +13,15 @@ metadata:
       provisioned production target, see infra/terraform/modules/ecr) or
       its GHCR namespace (what this specific deployment's CI actually
       pushes to, since no AWS account backs it — see docs/fidelity.md) —
-      with one narrow, explicitly digest-pinned exception for the upstream
-      cosign CLI image used by gitops/apps/demo-api/base's PreSync
-      verification hook (and Phase 6's continuous-verification CronJob):
-      that image runs no application code and is pinned to one exact
+      with two narrow, explicitly digest-pinned exceptions for the upstream
+      tooling images gitops/apps/demo-api/base's PreSync verification hook
+      and Phase 6's continuous-verification CronJob run (cosign, and a
+      kubectl-capable image the CronJob pairs it with — see that CronJob's
+      own comments for why two images are needed): neither runs this
+      project's own application code, and each is pinned to one exact
       digest, rotated only by editing this policy alongside
-      docs/versions.md. No Docker Hub, no arbitrary third-party registry.
+      docs/versions.md. No Docker Hub image otherwise, no arbitrary
+      third-party registry.
     nearvic.io/rationale: >-
       Signature verification only means something if the signer's identity
       also implies where the image lives. Allowing arbitrary registries
@@ -56,3 +59,9 @@ spec:
                     # v2.6.5 — see docs/versions.md. Exact digest, not a tag:
                     # bumping this requires editing this policy on purpose.
                     value: "gcr.io/projectsigstore/cosign@sha256:ad281047f85c5e1fc6ffbc30c2b55be3b07b4032bef715a12122ce5829619aca"
+                  - key: "{{ element.image }}"
+                    operator: NotEquals
+                    # bitnami/kubectl:latest, pinned by digest — see
+                    # docs/versions.md for why this tracks "latest" rather
+                    # than a specific kubectl version tag.
+                    value: "docker.io/bitnami/kubectl@sha256:b29d8c1665b70817259ceecaea16ab27aab6368b48daf485d19436c809067492"

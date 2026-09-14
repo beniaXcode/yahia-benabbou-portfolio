@@ -1,0 +1,43 @@
+# Same rationale as gitops/platform/argocd/manifests/networkpolicy.yaml —
+# the policy-reporter namespace gets the same generated deny-all as every
+# other non-system namespace. Policy Reporter's own egress needs are the
+# smallest of any platform component here (it only ever calls the
+# in-cluster API server to watch PolicyReport objects Kyverno's
+# background/reports controllers generate), but it keeps the same baseline
+# shape as the other platform NetworkPolicies for consistency and because a
+# human reaching its UI via `kubectl port-forward` is the same
+# node-originated traffic pattern already flagged in argocd's NetworkPolicy.
+apiVersion: networking.k8s.io/v1
+kind: NetworkPolicy
+metadata:
+  name: policy-reporter-allow
+  namespace: policy-reporter
+  labels:
+    app.kubernetes.io/name: policy-reporter
+    app.kubernetes.io/managed-by: argocd
+spec:
+  podSelector: {}
+  policyTypes:
+    - Ingress
+    - Egress
+  ingress:
+    - from:
+        - podSelector: {}
+  egress:
+    - to:
+        - podSelector: {}
+    - to:
+        - namespaceSelector:
+            matchLabels:
+              kubernetes.io/metadata.name: kube-system
+      ports:
+        - protocol: UDP
+          port: 53
+        - protocol: TCP
+          port: 53
+    - to:
+        - ipBlock:
+            cidr: 0.0.0.0/0
+      ports:
+        - protocol: TCP
+          port: 443

@@ -1,0 +1,44 @@
+# kind's default CNI (kindnet) does not enforce NetworkPolicy at all — every
+# generate/default-deny-networkpolicy.yaml object and every explicit allow
+# NetworkPolicy under gitops/ would be silently inert on a bare `kind create
+# cluster`. disableDefaultCNI + a matching podSubnet is what lets
+# demo/up.sh install Calico instead, which does enforce them. This is the
+# single most important line in this whole demo — without it, C9 and Phase
+# 7's exfiltration attack scenario (demo/attack/06-exfiltrate-node-role.sh)
+# would both silently pass for the wrong reason.
+kind: Cluster
+apiVersion: kind.x-k8s.io/v1alpha4
+name: zero-trust-gitops-platform
+networking:
+  disableDefaultCNI: true
+  # Matches Calico's own out-of-the-box default ipPool CIDR (manifests/
+  # custom-resources.yaml's calicoNetwork.ipPools[0].cidr, v3.32.2 — see
+  # docs/versions.md) exactly, so up.sh installs Calico with its stock
+  # manifest unmodified rather than patching the CIDR to match a value
+  # chosen here first.
+  podSubnet: "192.168.0.0/16"
+nodes:
+  - role: control-plane
+    kubeadmConfigPatches:
+      - |
+        kind: InitConfiguration
+        nodeRegistration:
+          kubeletExtraArgs:
+            node-labels: "ingress-ready=true"
+    extraPortMappings:
+      - containerPort: 80
+        hostPort: 8080
+        protocol: TCP
+      - containerPort: 443
+        hostPort: 8443
+        protocol: TCP
+  - role: worker
+  - role: worker
+containerdConfigPatches:
+  # Lets the cluster pull the digest-pinned demo-api/cosign/kubectl images
+  # this repo references without hitting each registry's real anonymous
+  # rate limits on every `make demo` run — points at a local pull-through
+  # cache container demo/up.sh starts alongside the cluster.
+  - |-
+    [plugins."io.containerd.grpc.v1.cri".registry.mirrors."ghcr.io"]
+      endpoint = ["http://kind-registry:5000"]

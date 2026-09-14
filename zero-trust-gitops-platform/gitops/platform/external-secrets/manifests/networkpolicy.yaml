@@ -1,0 +1,41 @@
+# Same rationale as gitops/platform/argocd/manifests/networkpolicy.yaml —
+# the external-secrets namespace gets the same generated deny-all as every
+# other non-system namespace. This operator specifically needs egress to
+# whichever ClusterSecretStore backend is in play (AWS Secrets Manager over
+# HTTPS in production, or the in-cluster API server for the "local-demo"
+# kubernetes-provider store — see cluster-secret-store.yaml), on top of the
+# same intra-namespace and DNS baseline every platform component needs.
+apiVersion: networking.k8s.io/v1
+kind: NetworkPolicy
+metadata:
+  name: external-secrets-allow
+  namespace: external-secrets
+  labels:
+    app.kubernetes.io/name: external-secrets
+    app.kubernetes.io/managed-by: argocd
+spec:
+  podSelector: {}
+  policyTypes:
+    - Ingress
+    - Egress
+  ingress:
+    - from:
+        - podSelector: {}
+  egress:
+    - to:
+        - podSelector: {}
+    - to:
+        - namespaceSelector:
+            matchLabels:
+              kubernetes.io/metadata.name: kube-system
+      ports:
+        - protocol: UDP
+          port: 53
+        - protocol: TCP
+          port: 53
+    - to:
+        - ipBlock:
+            cidr: 0.0.0.0/0
+      ports:
+        - protocol: TCP
+          port: 443

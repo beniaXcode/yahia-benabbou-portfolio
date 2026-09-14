@@ -1,0 +1,55 @@
+# C9 applies uniformly (policies/generate/default-deny-networkpolicy.yaml
+# excludes only the four built-in system namespaces, deliberately not
+# "every platform namespace this repo happens to add") — so the argocd
+# namespace gets the same generated deny-all as demo-api-*, and needs the
+# same kind of explicit allowance to keep functioning at all: Argo CD's own
+# components (server, repo-server, application-controller, redis) talk to
+# each other within this namespace, and the repo-server/application-
+# controller need real internet egress to reach this repo on GitHub and
+# each platform component's Helm chart repository.
+#
+# NOTE (see docs/fidelity.md, Phase 6): this is a functional baseline, not a
+# fully least-privileged one — it does not attempt to enumerate Argo CD's
+# exact internal port list (server<->repo-server<->redis<->
+# application-controller), since guessing that wrong would silently break
+# the whole platform with no live cluster here to catch the mistake before
+# it ships. Ingress into this namespace from outside it (a human's `kubectl
+# port-forward`, or the API server calling a validating/mutating webhook if
+# one is ever added here) is the same node/control-plane-originated
+# traffic pattern already flagged for demo-api's NetworkPolicy — whether a
+# NetworkPolicy even applies to it is a CNI property, not something this
+# manifest can settle.
+apiVersion: networking.k8s.io/v1
+kind: NetworkPolicy
+metadata:
+  name: argocd-allow
+  namespace: argocd
+  labels:
+    app.kubernetes.io/name: argocd
+    app.kubernetes.io/managed-by: argocd
+spec:
+  podSelector: {}
+  policyTypes:
+    - Ingress
+    - Egress
+  ingress:
+    - from:
+        - podSelector: {}
+  egress:
+    - to:
+        - podSelector: {}
+    - to:
+        - namespaceSelector:
+            matchLabels:
+              kubernetes.io/metadata.name: kube-system
+      ports:
+        - protocol: UDP
+          port: 53
+        - protocol: TCP
+          port: 53
+    - to:
+        - ipBlock:
+            cidr: 0.0.0.0/0
+      ports:
+        - protocol: TCP
+          port: 443

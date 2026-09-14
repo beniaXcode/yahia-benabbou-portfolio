@@ -1,0 +1,56 @@
+# C9's "explicit allowances" half: generate/default-deny-networkpolicy.yaml
+# (policies/generate/) creates a deny-all NetworkPolicy the instant this
+# namespace exists — Kyverno's generated policy and this one coexist
+# (Kubernetes NetworkPolicies are additive: a connection is allowed if *any*
+# applicable policy allows it), so this is the only place that has to name
+# what demo-api actually needs to keep working.
+#
+# NOTE (see docs/fidelity.md, Phase 6): kubelet-originated liveness/readiness
+# probe traffic technically arrives from the *node*, not from a pod this
+# `from:` selector can name — whether it's let through anyway is a property
+# of the CNI, not of this manifest. Calico (what demo/kind-cluster.yaml
+# installs in place of kind's default kindnet, which doesn't enforce
+# NetworkPolicy at all) allows kubelet probes through by default; this is
+# flagged here rather than solved with a made-up node-CIDR ipBlock this repo
+# has no way to verify against a real cluster.
+apiVersion: networking.k8s.io/v1
+kind: NetworkPolicy
+metadata:
+  name: demo-api-allow
+  labels:
+    app.kubernetes.io/name: demo-api
+    app.kubernetes.io/managed-by: argocd
+spec:
+  podSelector: {}
+  policyTypes:
+    - Ingress
+    - Egress
+  ingress:
+    # Only from within this same namespace — there is no Ingress controller
+    # or other in-cluster caller in this demo's topology.
+    - from:
+        - podSelector: {}
+      ports:
+        - protocol: TCP
+          port: 8080
+  egress:
+    # DNS — every pod needs this to resolve anything at all.
+    - to:
+        - namespaceSelector:
+            matchLabels:
+              kubernetes.io/metadata.name: kube-system
+      ports:
+        - protocol: UDP
+          port: 53
+        - protocol: TCP
+          port: 53
+    # HTTPS out to Fulcio/Rekor/the image registry — needed by the PreSync
+    # verification Job (presync-verify-job.yaml), which runs as a Pod in
+    # this same namespace. demo-api's own container makes no outbound calls
+    # at all once running; this rule is here for the Job, not the app.
+    - to:
+        - ipBlock:
+            cidr: 0.0.0.0/0
+      ports:
+        - protocol: TCP
+          port: 443

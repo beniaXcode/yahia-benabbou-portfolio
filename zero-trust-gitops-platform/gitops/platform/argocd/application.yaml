@@ -19,6 +19,12 @@ spec:
     - repoURL: https://github.com/beniaXcode/yahia-benabbou-portfolio.git
       targetRevision: main
       ref: values
+    # Points at manifests/ specifically, not this directory — this
+    # directory also holds application.yaml and values.yaml, neither of
+    # which is meant to be applied to the target cluster as-is.
+    - repoURL: https://github.com/beniaXcode/yahia-benabbou-portfolio.git
+      targetRevision: main
+      path: zero-trust-gitops-platform/gitops/platform/argocd/manifests
   destination:
     server: https://kubernetes.default.svc
     namespace: argocd

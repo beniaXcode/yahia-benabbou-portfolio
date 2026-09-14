@@ -15,3 +15,19 @@ patches:
       - op: replace
         path: /spec/replicas
         value: 3
+  # The real backend, not the kind-demo substitute — see
+  # gitops/apps/demo-api/base/externalsecret.yaml and
+  # gitops/platform/external-secrets/manifests/cluster-secret-store.yaml.
+  # remoteRef.key also changes: AWS Secrets Manager's path-style naming
+  # convention is not a legal Kubernetes object name, which is what
+  # base's key (the "local-demo" backend's literal Secret name) has to be.
+  - target:
+      kind: ExternalSecret
+      name: demo-api
+    patch: |-
+      - op: replace
+        path: /spec/secretStoreRef/name
+        value: aws-secrets-manager
+      - op: replace
+        path: /spec/data/0/remoteRef/key
+        value: zero-trust-gitops-platform/demo-api/demo-secret

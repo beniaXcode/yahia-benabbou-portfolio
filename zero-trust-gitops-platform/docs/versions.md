@@ -65,6 +65,7 @@ that time, rather than guessed now.
 | conftest | v0.70.0 | `go list -m github.com/open-policy-agent/conftest@latest` | 2026-09-14 |
 | gitleaks | v8.30.1 | `go list -m github.com/gitleaks/gitleaks/v8@latest` | 2026-09-14 |
 | yq | v4.53.6 | `go list -m github.com/mikefarah/yq/v4@latest` | 2026-09-14 |
+| Calico (installed by `demo/up.sh`, replacing kind's non-NetworkPolicy-enforcing default CNI — see `demo/kind-cluster.yaml`) | v3.32.2 | `git ls-remote --tags https://github.com/projectcalico/calico` (Calico's Go module path doesn't track its release tags, so this used the same tags+raw-file method as the Helm charts below rather than `go list -m`); its `manifests/tigera-operator.yaml` and `manifests/custom-resources.yaml` at that tag were confirmed reachable via `raw.githubusercontent.com` | 2026-09-14 (Phase 6) |
 
 ## Python-distributed tooling
 
@@ -91,6 +92,7 @@ which also resolves but leaves the OS version implicit.
 | Use | Image:tag | Digest | Resolved via | Date |
 |---|---|---|---|---|
 | `gitops/apps/demo-api/base`'s PreSync `cosign verify` hook Job | `gcr.io/projectsigstore/cosign:v2.6.5` | `sha256:ad281047f85c5e1fc6ffbc30c2b55be3b07b4032bef715a12122ce5829619aca` | Docker Registry v2 API against `gcr.io`, tag matching the cosign CLI version already resolved above | 2026-09-14 (Phase 5) |
+| `gitops/platform/verification`'s continuous-verify CronJob — `kubectl`-capable container (pairs with the cosign image above via a shared `emptyDir`; see that manifest's comments for why) | `docker.io/bitnami/kubectl:latest` (multi-arch index) | `sha256:b29d8c1665b70817259ceecaea16ab27aab6368b48daf485d19436c809067492` | Docker Registry v2 API against `registry-1.docker.io` — resolved by digest, as everywhere else in this repo, never deployed by the mutable `latest` tag (C5). The image's own baked-in `kubectl` version could not be cross-checked against a specific label: Docker Hub's blob storage redirects to a CDN host (`production.cloudfront.docker.com`) this sandbox's egress proxy doesn't allow, so only the registry API (manifest/digest resolution) was reachable, not the image config blob itself. `bitnami/kubectl` also publishes no plain `X.Y.Z` version tags in its tag list at the time of this check — its versioned tags (verified via `GET /v2/bitnami/kubectl/tags/list`) all carry additional suffixes this sandbox had no way to enumerate exhaustively — so this pin intentionally tracks "whatever `latest` currently resolves to, pinned by digest" rather than a specific kubectl version. kubectl's version-skew tolerance against the API server makes this an acceptable trade for a verification sidecar; it is not used against the cluster's actual `kubectl` compatibility contract the way `modules/eks`'s `kubernetes_version` is | 2026-09-14 (Phase 6) |
 
 ## Helm charts (`gitops/platform/`)
 

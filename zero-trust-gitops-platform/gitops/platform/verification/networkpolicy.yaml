@@ -1,0 +1,36 @@
+# Same rationale as the other platform NetworkPolicies. continuous-verify's
+# pods need: the in-cluster API server (to list pods and write the report
+# ConfigMap), DNS, and HTTPS out to github.com's release CDN (fetch-cosign.sh)
+# and to Fulcio/Rekor/each image's registry (verify.sh).
+apiVersion: networking.k8s.io/v1
+kind: NetworkPolicy
+metadata:
+  name: platform-verification-allow
+  namespace: platform-verification
+  labels:
+    app.kubernetes.io/name: platform-verification
+    app.kubernetes.io/managed-by: argocd
+spec:
+  podSelector: {}
+  policyTypes:
+    - Ingress
+    - Egress
+  ingress:
+    - from:
+        - podSelector: {}
+  egress:
+    - to:
+        - namespaceSelector:
+            matchLabels:
+              kubernetes.io/metadata.name: kube-system
+      ports:
+        - protocol: UDP
+          port: 53
+        - protocol: TCP
+          port: 53
+    - to:
+        - ipBlock:
+            cidr: 0.0.0.0/0
+      ports:
+        - protocol: TCP
+          port: 443

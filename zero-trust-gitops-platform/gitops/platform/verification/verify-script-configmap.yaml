@@ -1,0 +1,88 @@
+# The scripts this CronJob runs, not baked into a custom image: this repo's
+# build environment has no Docker daemon anywhere (see docs/fidelity.md), so
+# a purpose-built "verifier" image combining kubectl + cosign was never an
+# option. cosign's own official container image is genuinely distroless
+# (built `FROM gcr.io/distroless/static-debian12:nonroot` per its own
+# .ko.yaml — checked, not assumed) with no shell and nothing to copy itself
+# out with, which rules out the more common "borrow a binary via a shared
+# emptyDir between two containers" trick. Instead, fetch-cosign.sh downloads
+# cosign's statically-linked release binary directly and verifies it
+# against a checksum pinned in this file (resolved from cosign's own
+# published `cosign_checksums.txt` for v2.6.5 — see docs/versions.md) before
+# anything trusts it, the same "verify, never assume" pattern this repo used
+# for the Terraform provider zip in Phase 2.
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: continuous-verify-script
+  namespace: platform-verification
+  labels:
+    app.kubernetes.io/name: platform-verification
+    app.kubernetes.io/managed-by: argocd
+data:
+  fetch-cosign.sh: |
+    #!/bin/sh
+    set -eu
+
+    version=v2.6.5
+    expected_sha256=c3b4f5410e608af03a5eb0aaac84a4313d8da131248e08ff1759ac70c79d1644
+    url="https://github.com/sigstore/cosign/releases/download/${version}/cosign-linux-amd64"
+
+    curl -fsSL -o /shared/cosign "$url"
+
+    actual_sha256=$(sha256sum /shared/cosign | awk '{print $1}')
+    if [ "$actual_sha256" != "$expected_sha256" ]; then
+      echo "cosign binary checksum mismatch: got $actual_sha256, want $expected_sha256" >&2
+      rm -f /shared/cosign
+      exit 1
+    fi
+
+    chmod +x /shared/cosign
+
+  verify.sh: |
+    #!/bin/sh
+    set -eu
+
+    identity_regexp='^https://github.com/beniaXcode/yahia-benabbou-portfolio/.github/workflows/build-sign-attest.yml@refs/heads/main$'
+    issuer='https://token.actions.githubusercontent.com'
+
+    total=0
+    verified=0
+    report=/results/report.txt
+    : > "$report"
+
+    # Every currently-running container and initContainer's *resolved*
+    # image reference (imageID, not .image — the digest actually running,
+    # which is what C4/C5 care about, not whatever mutable-or-not string
+    # the pod spec happened to request).
+    jsonpath='{range .items[*]}'
+    jsonpath="${jsonpath}{range .status.containerStatuses[*]}{.imageID}{\"\\n\"}{end}"
+    jsonpath="${jsonpath}{range .status.initContainerStatuses[*]}{.imageID}{\"\\n\"}{end}{end}"
+    images=$(kubectl get pods -A -o jsonpath="$jsonpath" \
+      | sed -e 's#^docker-pullable://##' -e 's#^docker://##' \
+      | sort -u)
+
+    for ref in $images; do
+      [ -n "$ref" ] || continue
+      total=$((total + 1))
+      if /shared/cosign verify "$ref" \
+          --certificate-identity-regexp "$identity_regexp" \
+          --certificate-oidc-issuer "$issuer" >/dev/null 2>&1; then
+        verified=$((verified + 1))
+        echo "PASS $ref" >> "$report"
+      else
+        echo "FAIL $ref" >> "$report"
+      fi
+    done
+
+    {
+      echo "checked_at=$(date -u +%Y-%m-%dT%H:%M:%SZ)"
+      echo "verified=$verified"
+      echo "total=$total"
+    } >> "$report"
+
+    kubectl create configmap continuous-verify-report \
+      --from-file=report.txt="$report" \
+      --namespace platform-verification \
+      --dry-run=client -o yaml \
+      | kubectl apply -f -

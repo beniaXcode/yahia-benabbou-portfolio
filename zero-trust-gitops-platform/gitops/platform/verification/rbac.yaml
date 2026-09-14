@@ -1,0 +1,76 @@
+apiVersion: v1
+kind: ServiceAccount
+metadata:
+  name: continuous-verify
+  namespace: platform-verification
+  labels:
+    app.kubernetes.io/name: platform-verification
+    app.kubernetes.io/managed-by: argocd
+automountServiceAccountToken: true  # this workload's entire job is calling the API server
+---
+# Cluster-wide, read-only, exactly two verbs: this is "list every running
+# image digest," nothing more. No write access to any cluster-scoped
+# resource anywhere.
+apiVersion: rbac.authorization.k8s.io/v1
+kind: ClusterRole
+metadata:
+  name: continuous-verify-read-pods
+  labels:
+    app.kubernetes.io/name: platform-verification
+    app.kubernetes.io/managed-by: argocd
+rules:
+  - apiGroups: [""]
+    resources: ["pods"]
+    verbs: ["get", "list"]
+---
+apiVersion: rbac.authorization.k8s.io/v1
+kind: ClusterRoleBinding
+metadata:
+  name: continuous-verify-read-pods
+  labels:
+    app.kubernetes.io/name: platform-verification
+    app.kubernetes.io/managed-by: argocd
+roleRef:
+  apiGroup: rbac.authorization.k8s.io
+  kind: ClusterRole
+  name: continuous-verify-read-pods
+subjects:
+  - kind: ServiceAccount
+    name: continuous-verify
+    namespace: platform-verification
+---
+# Namespace-scoped: writing (only) the one ConfigMap this CronJob's own
+# results land in — never anything outside platform-verification.
+apiVersion: rbac.authorization.k8s.io/v1
+kind: Role
+metadata:
+  name: continuous-verify-write-report
+  namespace: platform-verification
+  labels:
+    app.kubernetes.io/name: platform-verification
+    app.kubernetes.io/managed-by: argocd
+rules:
+  - apiGroups: [""]
+    resources: ["configmaps"]
+    resourceNames: ["continuous-verify-report"]
+    verbs: ["get", "update", "patch"]
+  - apiGroups: [""]
+    resources: ["configmaps"]
+    verbs: ["create"]
+---
+apiVersion: rbac.authorization.k8s.io/v1
+kind: RoleBinding
+metadata:
+  name: continuous-verify-write-report
+  namespace: platform-verification
+  labels:
+    app.kubernetes.io/name: platform-verification
+    app.kubernetes.io/managed-by: argocd
+roleRef:
+  apiGroup: rbac.authorization.k8s.io
+  kind: Role
+  name: continuous-verify-write-report
+subjects:
+  - kind: ServiceAccount
+    name: continuous-verify
+    namespace: platform-verification

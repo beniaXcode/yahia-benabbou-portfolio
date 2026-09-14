@@ -39,7 +39,7 @@ func TestHandleVersion(t *testing.T) {
 		t.Errorf("got Content-Type %q, want %q", ct, "application/json")
 	}
 
-	var got map[string]string
+	var got map[string]any
 	if err := json.Unmarshal(rec.Body.Bytes(), &got); err != nil {
 		t.Fatalf("response is not valid JSON: %v", err)
 	}
@@ -49,5 +49,8 @@ func TestHandleVersion(t *testing.T) {
 		if got[k] != v {
 			t.Errorf("field %q: got %q, want %q", k, got[k], v)
 		}
+	}
+	if _, ok := got["secretLoaded"].(bool); !ok {
+		t.Errorf("field %q: got %#v, want a bool", "secretLoaded", got["secretLoaded"])
 	}
 }

@@ -67,9 +67,14 @@ func handleOK(w http.ResponseWriter, _ *http.Request) {
 
 func handleVersion(w http.ResponseWriter, _ *http.Request) {
 	w.Header().Set("Content-Type", "application/json")
-	_ = json.NewEncoder(w).Encode(map[string]string{
+	_ = json.NewEncoder(w).Encode(map[string]any{
 		"version":   version,
 		"commit":    commit,
 		"buildDate": buildDate,
+		// Never the value itself — only whether ESO's ExternalSecret
+		// (gitops/apps/demo-api/base/externalsecret.yaml) actually
+		// delivered one. Proves the runtime secrets path works without
+		// this handler ever becoming something worth attacking.
+		"secretLoaded": os.Getenv("DEMO_SECRET") != "",
 	})
 }

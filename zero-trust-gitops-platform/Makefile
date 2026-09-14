@@ -91,8 +91,8 @@ verify-chain: ## cosign verify + verify-attestation + Rekor lookup for a given D
 	@echo "not yet implemented (Phase 4)"; exit 1
 
 .PHONY: demo
-demo: ## Bring up the full kind + Argo CD + Kyverno GitOps loop (Phase 5-6)
-	@echo "not yet implemented (Phase 5/6)"; exit 1
+demo: ## Bring up the full kind + Argo CD + Kyverno GitOps loop (needs Docker — see docs/fidelity.md)
+	bash demo/up.sh
 
 .PHONY: demo-attack
 demo-attack: ## Run the six attack scenarios against the kind demo (Phase 7)
@@ -104,4 +104,4 @@ verify: ## Run every gate this repo claims passes (lint + test + policy-test + d
 
 .PHONY: clean
 clean: ## Tear down the local kind cluster and remove generated artefacts
-	@echo "not yet implemented (Phase 5/6)"; exit 1
+	bash demo/down.sh

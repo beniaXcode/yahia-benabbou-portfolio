@@ -1,0 +1,45 @@
+# Same rationale as gitops/platform/argocd/manifests/networkpolicy.yaml —
+# the kyverno namespace gets the same generated deny-all as every other
+# non-system namespace, and needs the same kind of baseline allowance to
+# keep functioning: admission-controller/background-controller/cleanup-
+# controller/reports-controller talking to each other, plus the two
+# verifyImages-adjacent egress needs (Fulcio/Rekor's TUF root, and each
+# image's registry) that policies/supply-chain/verify-*.yaml's admission-time
+# checks depend on. See that file's NOTE for the ingress-from-outside-the-
+# namespace caveat, which applies here identically — the API server calling
+# Kyverno's own admission webhook is exactly the same kind of
+# control-plane-originated traffic already flagged there.
+apiVersion: networking.k8s.io/v1
+kind: NetworkPolicy
+metadata:
+  name: kyverno-allow
+  namespace: kyverno
+  labels:
+    app.kubernetes.io/name: kyverno
+    app.kubernetes.io/managed-by: argocd
+spec:
+  podSelector: {}
+  policyTypes:
+    - Ingress
+    - Egress
+  ingress:
+    - from:
+        - podSelector: {}
+  egress:
+    - to:
+        - podSelector: {}
+    - to:
+        - namespaceSelector:
+            matchLabels:
+              kubernetes.io/metadata.name: kube-system
+      ports:
+        - protocol: UDP
+          port: 53
+        - protocol: TCP
+          port: 53
+    - to:
+        - ipBlock:
+            cidr: 0.0.0.0/0
+      ports:
+        - protocol: TCP
+          port: 443
