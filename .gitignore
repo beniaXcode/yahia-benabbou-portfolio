@@ -38,6 +38,7 @@ override.tf.json
 
 # --- go ---
 /zero-trust-gitops-platform/apps/**/bin/
+/zero-trust-gitops-platform/apps/demo-api/demo-api
 *.test
 *.out
 
