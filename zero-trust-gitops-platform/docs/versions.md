@@ -66,6 +66,7 @@ that time, rather than guessed now.
 | gitleaks | v8.30.1 | `go list -m github.com/gitleaks/gitleaks/v8@latest` | 2026-09-14 |
 | yq | v4.53.6 | `go list -m github.com/mikefarah/yq/v4@latest` | 2026-09-14 |
 | Calico (installed by `demo/up.sh`, replacing kind's non-NetworkPolicy-enforcing default CNI — see `demo/kind-cluster.yaml`) | v3.32.2 | `git ls-remote --tags https://github.com/projectcalico/calico` (Calico's Go module path doesn't track its release tags, so this used the same tags+raw-file method as the Helm charts below rather than `go list -m`); its `manifests/tigera-operator.yaml` and `manifests/custom-resources.yaml` at that tag were confirmed reachable via `raw.githubusercontent.com` | 2026-09-14 (Phase 6) |
+| `@mermaid-js/mermaid-cli` (renders `docs/diagrams/src/*.mmd` → SVG) | v11.17.0 | `npx --yes @mermaid-js/mermaid-cli --version` against the real npm registry (reachable from this sandbox) | 2026-09-14 (Phase 8) |
 
 ## Python-distributed tooling
 
@@ -233,7 +234,15 @@ Not available here:
 - **`checkov`** — `pip install` failed on an unrelated system package
   conflict (`packaging` installed by `apt` has no pip `RECORD`, so pip can't
   upgrade it). Needed starting Phase 2; will resolve then (likely a venv).
-- **`mkdocs-material`** — not installed yet; not needed before Phase 8.
+- **`mkdocs-material`** — installed in Phase 8 (`pip install mkdocs-material`, resolved to the
+  same v9.7.7 already recorded above); `mkdocs build --strict` was run for real against this
+  repository's own `mkdocs.yml` and passed with zero warnings.
+- **`@mermaid-js/mermaid-cli`** — installed in Phase 8 via `npx --yes @mermaid-js/mermaid-cli@<version>`
+  (Node 22 is present in this sandbox); resolved to v11.17.0, recorded in the platform tooling
+  table above. Needs `-p` pointed at a `{"args": ["--no-sandbox"]}` puppeteer config to run as
+  root (this sandbox, and most CI containers) — `tools/render-diagrams.sh` does this
+  automatically; both diagrams under `docs/diagrams/` were rendered for real, not left as
+  Mermaid source only.
 - **Docker daemon** — not reachable at all (`docker info` fails), so `kind`
   cannot actually bring up a cluster here regardless of the binary being
   installed. Every gate under Phases 5-7 that needs a running cluster will

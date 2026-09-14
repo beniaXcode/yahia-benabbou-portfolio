@@ -9,11 +9,11 @@ if this file doesn't match what that command produces.
 
 ### Allowed Registries
 
-- **Policy file:** [`policies/supply-chain/allowed-registries.yaml`](../policies/supply-chain/allowed-registries.yaml)
+- **Policy file:** [`policies/supply-chain/allowed-registries.yaml`](https://github.com/beniaXcode/yahia-benabbou-portfolio/blob/main/zero-trust-gitops-platform/policies/supply-chain/allowed-registries.yaml)
 - **Severity:** high
 - **Subject:** Pod
 - **Compliance mapping:** NIST SSDF PO.5.1, CIS EKS 5.4.1, SOC 2 CC6.1
-- **Tests:** [`policies/tests/allowed-registries`](../policies/tests/allowed-registries)
+- **Tests:** [`policies/tests/allowed-registries`](https://github.com/beniaXcode/yahia-benabbou-portfolio/tree/main/zero-trust-gitops-platform/policies/tests/allowed-registries)
 
 Every container and initContainer image must come from this project's own registry — either its ECR repository (the Terraform- provisioned production target, see infra/terraform/modules/ecr) or its GHCR namespace (what this specific deployment's CI actually pushes to, since no AWS account backs it — see docs/fidelity.md) — with two narrow, explicitly digest-pinned exceptions for the upstream tooling images gitops/apps/demo-api/base's PreSync verification hook and Phase 6's continuous-verification CronJob run (cosign, and a kubectl-capable image the CronJob pairs it with — see that CronJob's own comments for why two images are needed): neither runs this project's own application code, and each is pinned to one exact digest, rotated only by editing this policy alongside docs/versions.md. No Docker Hub image otherwise, no arbitrary third-party registry.
 
@@ -21,11 +21,11 @@ Every container and initContainer image must come from this project's own regist
 
 ### Require Image Digest
 
-- **Policy file:** [`policies/supply-chain/require-image-digest.yaml`](../policies/supply-chain/require-image-digest.yaml)
+- **Policy file:** [`policies/supply-chain/require-image-digest.yaml`](https://github.com/beniaXcode/yahia-benabbou-portfolio/blob/main/zero-trust-gitops-platform/policies/supply-chain/require-image-digest.yaml)
 - **Severity:** high
 - **Subject:** Pod
 - **Compliance mapping:** SLSA v1.0 Build L3 (immutable references), NIST SSDF PS.3.1, CIS EKS 5.4.1
-- **Tests:** [`policies/tests/require-image-digest`](../policies/tests/require-image-digest)
+- **Tests:** [`policies/tests/require-image-digest`](https://github.com/beniaXcode/yahia-benabbou-portfolio/tree/main/zero-trust-gitops-platform/policies/tests/require-image-digest)
 
 Every container and initContainer image reference must include a @sha256:... digest. A bare tag, including :latest, is rejected.
 
@@ -33,11 +33,11 @@ Every container and initContainer image reference must include a @sha256:... dig
 
 ### Verify Image Signature (Keyless)
 
-- **Policy file:** [`policies/supply-chain/verify-image-signature.yaml`](../policies/supply-chain/verify-image-signature.yaml)
+- **Policy file:** [`policies/supply-chain/verify-image-signature.yaml`](https://github.com/beniaXcode/yahia-benabbou-portfolio/blob/main/zero-trust-gitops-platform/policies/supply-chain/verify-image-signature.yaml)
 - **Severity:** critical
 - **Subject:** Pod
 - **Compliance mapping:** SLSA v1.0 Build L3, NIST SSDF PS.2.1/PS.3.2, CIS EKS 5.4.1, SOC 2 CC6.1/CC8.1
-- **Tests:** [`policies/tests/verify-image-signature`](../policies/tests/verify-image-signature)
+- **Tests:** [`policies/tests/verify-image-signature`](https://github.com/beniaXcode/yahia-benabbou-portfolio/tree/main/zero-trust-gitops-platform/policies/tests/verify-image-signature)
 
 Every image must carry a valid Sigstore keyless signature whose Fulcio certificate identity matches this project's own release workflow — not merely "a" signature from anyone.
 
@@ -45,11 +45,11 @@ Every image must carry a valid Sigstore keyless signature whose Fulcio certifica
 
 ### Verify SBOM Attestation
 
-- **Policy file:** [`policies/supply-chain/verify-sbom-attestation.yaml`](../policies/supply-chain/verify-sbom-attestation.yaml)
+- **Policy file:** [`policies/supply-chain/verify-sbom-attestation.yaml`](https://github.com/beniaXcode/yahia-benabbou-portfolio/blob/main/zero-trust-gitops-platform/policies/supply-chain/verify-sbom-attestation.yaml)
 - **Severity:** high
 - **Subject:** Pod
 - **Compliance mapping:** NIST SSDF PS.3.2/RV.1.1, SLSA v1.0 (Provenance-Available), PCI-DSS v4 6.3.2
-- **Tests:** [`policies/tests/verify-sbom-attestation`](../policies/tests/verify-sbom-attestation)
+- **Tests:** [`policies/tests/verify-sbom-attestation`](https://github.com/beniaXcode/yahia-benabbou-portfolio/tree/main/zero-trust-gitops-platform/policies/tests/verify-sbom-attestation)
 
 Every image must carry a signed CycloneDX SBOM attestation from this project's own release workflow.
 
@@ -57,11 +57,11 @@ Every image must carry a signed CycloneDX SBOM attestation from this project's o
 
 ### Verify SLSA Provenance Attestation
 
-- **Policy file:** [`policies/supply-chain/verify-slsa-provenance.yaml`](../policies/supply-chain/verify-slsa-provenance.yaml)
+- **Policy file:** [`policies/supply-chain/verify-slsa-provenance.yaml`](https://github.com/beniaXcode/yahia-benabbou-portfolio/blob/main/zero-trust-gitops-platform/policies/supply-chain/verify-slsa-provenance.yaml)
 - **Severity:** critical
 - **Subject:** Pod
 - **Compliance mapping:** SLSA v1.0 Build L3 (Provenance-Available/Authentic), NIST SSDF PS.3.2
-- **Tests:** [`policies/tests/verify-slsa-provenance`](../policies/tests/verify-slsa-provenance)
+- **Tests:** [`policies/tests/verify-slsa-provenance`](https://github.com/beniaXcode/yahia-benabbou-portfolio/tree/main/zero-trust-gitops-platform/policies/tests/verify-slsa-provenance)
 
 Every image must carry a signed SLSA provenance attestation (predicateType slsa.dev/provenance/v1) from this project's own release workflow.
 
@@ -71,11 +71,11 @@ Every image must carry a signed SLSA provenance attestation (predicateType slsa.
 
 ### Disallow Host Namespaces, hostPath, and Privileged Containers
 
-- **Policy file:** [`policies/workload-hardening/disallow-host-namespaces.yaml`](../policies/workload-hardening/disallow-host-namespaces.yaml)
+- **Policy file:** [`policies/workload-hardening/disallow-host-namespaces.yaml`](https://github.com/beniaXcode/yahia-benabbou-portfolio/blob/main/zero-trust-gitops-platform/policies/workload-hardening/disallow-host-namespaces.yaml)
 - **Severity:** critical
 - **Subject:** Pod
 - **Compliance mapping:** CIS EKS 5.2.2/5.2.3/5.2.4, NIST SSDF PS.1.1, SOC 2 CC6.1
-- **Tests:** [`policies/tests/disallow-host-namespaces`](../policies/tests/disallow-host-namespaces)
+- **Tests:** [`policies/tests/disallow-host-namespaces`](https://github.com/beniaXcode/yahia-benabbou-portfolio/tree/main/zero-trust-gitops-platform/policies/tests/disallow-host-namespaces)
 
 Pods must not use hostNetwork, hostIPC, or hostPID, must not mount a hostPath volume, and no container may run privileged.
 
@@ -83,11 +83,11 @@ Pods must not use hostNetwork, hostIPC, or hostPID, must not mount a hostPath vo
 
 ### Disallow Privilege Escalation
 
-- **Policy file:** [`policies/workload-hardening/disallow-privilege-escalation.yaml`](../policies/workload-hardening/disallow-privilege-escalation.yaml)
+- **Policy file:** [`policies/workload-hardening/disallow-privilege-escalation.yaml`](https://github.com/beniaXcode/yahia-benabbou-portfolio/blob/main/zero-trust-gitops-platform/policies/workload-hardening/disallow-privilege-escalation.yaml)
 - **Severity:** high
 - **Subject:** Pod
 - **Compliance mapping:** CIS EKS 5.2.10, NIST SSDF PS.1.1
-- **Tests:** [`policies/tests/disallow-privilege-escalation`](../policies/tests/disallow-privilege-escalation)
+- **Tests:** [`policies/tests/disallow-privilege-escalation`](https://github.com/beniaXcode/yahia-benabbou-portfolio/tree/main/zero-trust-gitops-platform/policies/tests/disallow-privilege-escalation)
 
 Every container must set securityContext.allowPrivilegeEscalation: false.
 
@@ -95,11 +95,11 @@ Every container must set securityContext.allowPrivilegeEscalation: false.
 
 ### Drop All Capabilities
 
-- **Policy file:** [`policies/workload-hardening/drop-all-capabilities.yaml`](../policies/workload-hardening/drop-all-capabilities.yaml)
+- **Policy file:** [`policies/workload-hardening/drop-all-capabilities.yaml`](https://github.com/beniaXcode/yahia-benabbou-portfolio/blob/main/zero-trust-gitops-platform/policies/workload-hardening/drop-all-capabilities.yaml)
 - **Severity:** high
 - **Subject:** Pod
 - **Compliance mapping:** CIS EKS 5.2.9, NIST SSDF PS.1.1
-- **Tests:** [`policies/tests/drop-all-capabilities`](../policies/tests/drop-all-capabilities)
+- **Tests:** [`policies/tests/drop-all-capabilities`](https://github.com/beniaXcode/yahia-benabbou-portfolio/tree/main/zero-trust-gitops-platform/policies/tests/drop-all-capabilities)
 
 Every container must explicitly drop the ALL Linux capability set.
 
@@ -107,11 +107,11 @@ Every container must explicitly drop the ALL Linux capability set.
 
 ### Require Read-Only Root Filesystem
 
-- **Policy file:** [`policies/workload-hardening/require-readonly-rootfs.yaml`](../policies/workload-hardening/require-readonly-rootfs.yaml)
+- **Policy file:** [`policies/workload-hardening/require-readonly-rootfs.yaml`](https://github.com/beniaXcode/yahia-benabbou-portfolio/blob/main/zero-trust-gitops-platform/policies/workload-hardening/require-readonly-rootfs.yaml)
 - **Severity:** medium
 - **Subject:** Pod
 - **Compliance mapping:** CIS EKS 5.2.5, NIST SSDF PS.1.1
-- **Tests:** [`policies/tests/require-readonly-rootfs`](../policies/tests/require-readonly-rootfs)
+- **Tests:** [`policies/tests/require-readonly-rootfs`](https://github.com/beniaXcode/yahia-benabbou-portfolio/tree/main/zero-trust-gitops-platform/policies/tests/require-readonly-rootfs)
 
 Every container must set securityContext.readOnlyRootFilesystem: true.
 
@@ -119,11 +119,11 @@ Every container must set securityContext.readOnlyRootFilesystem: true.
 
 ### Require Resource Requests and Limits
 
-- **Policy file:** [`policies/workload-hardening/require-resource-limits.yaml`](../policies/workload-hardening/require-resource-limits.yaml)
+- **Policy file:** [`policies/workload-hardening/require-resource-limits.yaml`](https://github.com/beniaXcode/yahia-benabbou-portfolio/blob/main/zero-trust-gitops-platform/policies/workload-hardening/require-resource-limits.yaml)
 - **Severity:** medium
 - **Subject:** Pod
 - **Compliance mapping:** CIS EKS 5.7.3, NIST SSDF PS.1.1
-- **Tests:** [`policies/tests/require-resource-limits`](../policies/tests/require-resource-limits)
+- **Tests:** [`policies/tests/require-resource-limits`](https://github.com/beniaXcode/yahia-benabbou-portfolio/tree/main/zero-trust-gitops-platform/policies/tests/require-resource-limits)
 
 Every container must set cpu and memory requests and limits.
 
@@ -131,11 +131,11 @@ Every container must set cpu and memory requests and limits.
 
 ### Require runAsNonRoot
 
-- **Policy file:** [`policies/workload-hardening/require-run-as-nonroot.yaml`](../policies/workload-hardening/require-run-as-nonroot.yaml)
+- **Policy file:** [`policies/workload-hardening/require-run-as-nonroot.yaml`](https://github.com/beniaXcode/yahia-benabbou-portfolio/blob/main/zero-trust-gitops-platform/policies/workload-hardening/require-run-as-nonroot.yaml)
 - **Severity:** high
 - **Subject:** Pod
 - **Compliance mapping:** CIS EKS 5.2.1, NIST SSDF PS.1.1, PCI-DSS v4 6.4.1
-- **Tests:** [`policies/tests/require-run-as-nonroot`](../policies/tests/require-run-as-nonroot)
+- **Tests:** [`policies/tests/require-run-as-nonroot`](https://github.com/beniaXcode/yahia-benabbou-portfolio/tree/main/zero-trust-gitops-platform/policies/tests/require-run-as-nonroot)
 
 Pods must set spec.securityContext.runAsNonRoot: true.
 
@@ -143,11 +143,11 @@ Pods must set spec.securityContext.runAsNonRoot: true.
 
 ### Require seccompProfile RuntimeDefault
 
-- **Policy file:** [`policies/workload-hardening/require-seccomp-runtimedefault.yaml`](../policies/workload-hardening/require-seccomp-runtimedefault.yaml)
+- **Policy file:** [`policies/workload-hardening/require-seccomp-runtimedefault.yaml`](https://github.com/beniaXcode/yahia-benabbou-portfolio/blob/main/zero-trust-gitops-platform/policies/workload-hardening/require-seccomp-runtimedefault.yaml)
 - **Severity:** medium
 - **Subject:** Pod
 - **Compliance mapping:** CIS EKS 5.7.2, NIST SSDF PS.1.1
-- **Tests:** [`policies/tests/require-seccomp-runtimedefault`](../policies/tests/require-seccomp-runtimedefault)
+- **Tests:** [`policies/tests/require-seccomp-runtimedefault`](https://github.com/beniaXcode/yahia-benabbou-portfolio/tree/main/zero-trust-gitops-platform/policies/tests/require-seccomp-runtimedefault)
 
 Pods must set spec.securityContext.seccompProfile.type: RuntimeDefault.
 
@@ -157,11 +157,11 @@ Pods must set spec.securityContext.seccompProfile.type: RuntimeDefault.
 
 ### Disallow the Default Namespace
 
-- **Policy file:** [`policies/governance/disallow-default-namespace.yaml`](../policies/governance/disallow-default-namespace.yaml)
+- **Policy file:** [`policies/governance/disallow-default-namespace.yaml`](https://github.com/beniaXcode/yahia-benabbou-portfolio/blob/main/zero-trust-gitops-platform/policies/governance/disallow-default-namespace.yaml)
 - **Severity:** low
 - **Subject:** Pod, Deployment, StatefulSet, DaemonSet, Job, CronJob
 - **Compliance mapping:** CIS EKS 5.7.4, NIST SSDF PO.3.1
-- **Tests:** [`policies/tests/disallow-default-namespace`](../policies/tests/disallow-default-namespace)
+- **Tests:** [`policies/tests/disallow-default-namespace`](https://github.com/beniaXcode/yahia-benabbou-portfolio/tree/main/zero-trust-gitops-platform/policies/tests/disallow-default-namespace)
 
 Workloads must not be created in the default namespace.
 
@@ -169,11 +169,11 @@ Workloads must not be created in the default namespace.
 
 ### Require Ownership Labels
 
-- **Policy file:** [`policies/governance/require-ownership-labels.yaml`](../policies/governance/require-ownership-labels.yaml)
+- **Policy file:** [`policies/governance/require-ownership-labels.yaml`](https://github.com/beniaXcode/yahia-benabbou-portfolio/blob/main/zero-trust-gitops-platform/policies/governance/require-ownership-labels.yaml)
 - **Severity:** low
 - **Subject:** Pod
 - **Compliance mapping:** SOC 2 CC7.2 (asset inventory), NIST SSDF PO.3.1
-- **Tests:** [`policies/tests/require-ownership-labels`](../policies/tests/require-ownership-labels)
+- **Tests:** [`policies/tests/require-ownership-labels`](https://github.com/beniaXcode/yahia-benabbou-portfolio/tree/main/zero-trust-gitops-platform/policies/tests/require-ownership-labels)
 
 Pods must carry app.kubernetes.io/name and app.kubernetes.io/managed-by labels.
 
@@ -181,11 +181,11 @@ Pods must carry app.kubernetes.io/name and app.kubernetes.io/managed-by labels.
 
 ### Require Liveness and Readiness Probes
 
-- **Policy file:** [`policies/governance/require-probes.yaml`](../policies/governance/require-probes.yaml)
+- **Policy file:** [`policies/governance/require-probes.yaml`](https://github.com/beniaXcode/yahia-benabbou-portfolio/blob/main/zero-trust-gitops-platform/policies/governance/require-probes.yaml)
 - **Severity:** low
 - **Subject:** Pod
 - **Compliance mapping:** SOC 2 CC7.2 (availability monitoring)
-- **Tests:** [`policies/tests/require-probes`](../policies/tests/require-probes)
+- **Tests:** [`policies/tests/require-probes`](https://github.com/beniaXcode/yahia-benabbou-portfolio/tree/main/zero-trust-gitops-platform/policies/tests/require-probes)
 
 Every container must define both a readinessProbe and a livenessProbe.
 
@@ -195,11 +195,11 @@ Every container must define both a readinessProbe and a livenessProbe.
 
 ### Generate Default-Deny NetworkPolicy
 
-- **Policy file:** [`policies/generate/default-deny-networkpolicy.yaml`](../policies/generate/default-deny-networkpolicy.yaml)
+- **Policy file:** [`policies/generate/default-deny-networkpolicy.yaml`](https://github.com/beniaXcode/yahia-benabbou-portfolio/blob/main/zero-trust-gitops-platform/policies/generate/default-deny-networkpolicy.yaml)
 - **Severity:** high
 - **Subject:** Namespace, NetworkPolicy
 - **Compliance mapping:** CIS EKS 5.3.2, NIST SSDF PS.1.1, PCI-DSS v4 1.3
-- **Tests:** [`policies/tests/default-deny-networkpolicy`](../policies/tests/default-deny-networkpolicy)
+- **Tests:** [`policies/tests/default-deny-networkpolicy`](https://github.com/beniaXcode/yahia-benabbou-portfolio/tree/main/zero-trust-gitops-platform/policies/tests/default-deny-networkpolicy)
 
 Every new namespace (excluding the built-in system namespaces) automatically gets a default-deny-all NetworkPolicy the moment it's created.
 
@@ -207,11 +207,11 @@ Every new namespace (excluding the built-in system namespaces) automatically get
 
 ### Generate Namespace ResourceQuota
 
-- **Policy file:** [`policies/generate/namespace-resourcequota.yaml`](../policies/generate/namespace-resourcequota.yaml)
+- **Policy file:** [`policies/generate/namespace-resourcequota.yaml`](https://github.com/beniaXcode/yahia-benabbou-portfolio/blob/main/zero-trust-gitops-platform/policies/generate/namespace-resourcequota.yaml)
 - **Severity:** medium
 - **Subject:** Namespace, ResourceQuota
 - **Compliance mapping:** CIS EKS 5.7.3, SOC 2 CC7.2 (availability)
-- **Tests:** [`policies/tests/namespace-resourcequota`](../policies/tests/namespace-resourcequota)
+- **Tests:** [`policies/tests/namespace-resourcequota`](https://github.com/beniaXcode/yahia-benabbou-portfolio/tree/main/zero-trust-gitops-platform/policies/tests/namespace-resourcequota)
 
 Every new namespace (excluding the built-in system namespaces) automatically gets a baseline ResourceQuota the moment it's created.
 

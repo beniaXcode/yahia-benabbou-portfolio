@@ -1,0 +1,62 @@
+site_name: zero-trust-gitops-platform
+site_description: >-
+  A reference implementation of GitOps delivery on AWS EKS with zero long-lived credentials,
+  cryptographically attested images, and policy-enforced admission.
+repo_url: https://github.com/beniaXcode/yahia-benabbou-portfolio
+repo_name: beniaXcode/yahia-benabbou-portfolio
+edit_uri: edit/main/zero-trust-gitops-platform/docs/
+docs_dir: docs
+
+theme:
+  name: material
+  palette:
+    - media: "(prefers-color-scheme: light)"
+      scheme: default
+      toggle:
+        icon: material/brightness-7
+        name: Switch to dark mode
+    - media: "(prefers-color-scheme: dark)"
+      scheme: slate
+      toggle:
+        icon: material/brightness-4
+        name: Switch to light mode
+  features:
+    - navigation.instant
+    - navigation.tracking
+    - content.code.copy
+
+nav:
+  - Home: index.md
+  - Architecture: architecture.md
+  - Identity model: identity-model.md
+  - Supply chain: supply-chain.md
+  - Threat model: threat-model.md
+  - Compliance mapping: compliance-mapping.md
+  - Policy catalog: policy-catalog.md
+  - Versions: versions.md
+  - Fidelity: fidelity.md
+  - Architecture Decision Records:
+      - Template: adr/0000-template.md
+      - "0001. GHCR over ECR for this deployment": adr/0001-ghcr-over-ecr-for-this-deployment.md
+      - "0002. Argo CD multi-source Applications": adr/0002-argocd-multi-source-applications-over-plain-manifests.md
+      - "0003. Sigstore keyless signing": adr/0003-sigstore-keyless-signing.md
+      - "0004. External Secrets over Sealed Secrets/SOPS": adr/0004-external-secrets-over-sealed-secrets-sops.md
+      - "0005. EKS Pod Identity over IRSA": adr/0005-eks-pod-identity-over-irsa.md
+      - "0006. Local demo fidelity fallbacks": adr/0006-local-demo-fidelity-fallbacks.md
+  - Runbooks:
+      - Policy violation triage: runbooks/policy-violation-triage.md
+      - Kyverno admission denied: runbooks/kyverno-admission-denied.md
+      - Argo CD drift and sync failure: runbooks/argocd-drift-and-sync-failure.md
+      - "Incident: suspected compromised signing identity": runbooks/incident-suspected-compromised-signing-identity.md
+
+markdown_extensions:
+  - tables
+  - toc:
+      permalink: true
+  - admonition
+  - pymdownx.superfences
+
+validation:
+  omitted_files: warn
+  absolute_links: warn
+  unrecognized_links: warn

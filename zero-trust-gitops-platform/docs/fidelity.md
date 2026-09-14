@@ -120,3 +120,49 @@ NetworkPolicy (Phase 6), a pod cannot open a connection to `169.254.169.254` at 
 IMDSv2-plus-hop-limit-1 defense against a node-level (non-pod) credential-theft attempt is proven
 separately, by `infra/terraform/modules/eks`'s launch template and its own Terraform validation
 (Phase 2) — not by anything this kind demo can exercise, since kind has no EC2 launch templates.
+
+## Phase 8 — documentation, diagrams, threat model
+
+Almost everything in this phase was verifiable for real, and was — this is the one phase whose own
+gate (`mkdocs build --strict`, zero warnings) this sandbox could genuinely run rather than assert:
+
+- `pip install mkdocs-material` succeeded and resolved to v9.7.7 — exactly the version already
+  recorded in `versions.md` from Phase 0's `pypi.org` lookup, now confirmed by actually installing
+  and running it, not just querying its metadata.
+- `npx --yes @mermaid-js/mermaid-cli` (Node 22, already present) resolved and ran for real,
+  rendering both `docs/diagrams/src/*.mmd` sources to genuine SVG files — needed a
+  `{"args": ["--no-sandbox"]}` puppeteer config to launch Chromium as root (this sandbox, like most
+  CI containers), which `tools/render-diagrams.sh` now does automatically.
+- `mkdocs build --strict` was run against this repository's own real `mkdocs.yml` and passed with
+  zero warnings — not asserted, executed. Getting there required a real, non-obvious fix: every
+  cross-reference from a docs page to actual source code (`policies/*.yaml`,
+  `.github/workflows/*.yml`, `infra/terraform/modules/*`, `demo/attack/*.sh`) lives *outside*
+  `docs_dir`, which MkDocs' own link validation treats as a broken internal link under `--strict`
+  regardless of the configured warning level for that category (the per-category `warn` settings
+  this file's own `mkdocs.yml` first tried do not exempt a link from `--strict`'s blanket
+  promotion). Fixed by rewriting every such cross-reference to an absolute
+  `https://github.com/beniaXcode/yahia-benabbou-portfolio/...` URL instead of a relative path — a
+  strictly better outcome anyway, since those links now also resolve correctly from within the
+  *deployed* docs site (which never serves raw source files at a relative path in the first place),
+  not only when browsing the raw Markdown in the repository.
+
+**A real gap found and closed while writing this phase, not merely documented:** BRIEF.md's own
+branch-ruleset and CI sections both name an `e2e-kind` required check that Phase 4 never actually
+wrote — the workflow that runs `make demo` and `make demo-attack` on a real GitHub-hosted runner is
+the one place Phase 7's entire gate ("all six scripts exit 0... in CI on a GitHub-hosted runner")
+was ever supposed to be proven, and it didn't exist. Added
+`.github/workflows/e2e-kind.yml`. It could not be run here either (still no Docker), but one part
+of it *was* verified for real: `actions/runner-images`' own published Ubuntu 24.04 toolset manifest
+(fetched directly, not assumed) confirms `kind`, `kubectl`, and `kustomize` are preinstalled on
+GitHub's runner at the exact versions already pinned in this repository's `versions.md` — so the
+workflow installs only `cosign`, not all three tools redundantly.
+
+Also added in this phase, both load-bearing rather than decorative: `tools/check-no-placeholders.sh`
+(BRIEF's own Definition-of-Done requirement — no unfinished-work markers or filler text anywhere,
+CI-enforced — had never actually been built; wired into both `ci.yml` and pre-commit, with the same
+self-referential-false-positive fix pattern already used for `check-no-secrets.sh` — this check's
+own name and step label contain the words it searches for), and the README rewrite deliberately
+omits role/location/LinkedIn/an availability note from BRIEF.md's author-footer spec: this session
+has no verified source for any of those four facts about the repository's author, and Operating
+Rule 4 ("never guess... a plausible-looking wrong [detail] is worse than a question") applies to a
+person's own biography at least as much as to a version number.

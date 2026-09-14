@@ -1,0 +1,48 @@
+name: e2e (kind)
+
+# Phase 7's gate: all six demo/attack/*.sh scripts must exit 0 on a real,
+# GitHub-hosted runner with Docker — the one thing this repository's own
+# sandbox build environment never had (see docs/fidelity.md). GitHub's
+# ubuntu runner image already ships kind, kubectl, and kustomize at exactly
+# the versions this repo pins (confirmed against actions/runner-images'
+# own published toolset manifest — see docs/versions.md), so only cosign
+# needs installing here.
+
+on:
+  pull_request:
+    branches: [main]
+  push:
+    branches: [main]
+  workflow_dispatch: {}
+
+permissions:
+  contents: read
+
+jobs:
+  e2e:
+    runs-on: ubuntu-latest
+    timeout-minutes: 30
+    defaults:
+      run:
+        working-directory: zero-trust-gitops-platform
+    steps:
+      - name: Checkout
+        uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1  # v7.0.1
+
+      - name: Install cosign
+        uses: sigstore/cosign-installer@6f9f17788090df1f26f669e9d70d6ae9567deba6  # v4.1.2
+
+      - name: Set up Go
+        uses: actions/setup-go@b7ad1dad31e06c5925ef5d2fc7ad053ef454303e  # v7.0.0
+        with:
+          go-version: "1.27.1"
+
+      - name: make demo
+        run: make demo
+
+      - name: make demo-attack
+        run: make demo-attack
+
+      - name: Tear down (always, even on failure, to free the runner)
+        if: always()
+        run: make clean

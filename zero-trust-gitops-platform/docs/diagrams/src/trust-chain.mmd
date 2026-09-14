@@ -1,0 +1,33 @@
+flowchart TD
+    Dev["Developer<br/>signed commit"]
+    PR["Pull request<br/>CI: lint, unit tests, IaC scan,<br/>policy unit tests, gitleaks,<br/>shift-left kyverno apply"]
+    Merge["Merge to main<br/>branch ruleset: signed commits,<br/>required checks, CODEOWNERS"]
+    OIDC["GitHub Actions OIDC token<br/>id-token: write"]
+    STS["AWS STS<br/>AssumeRoleWithWebIdentity<br/>15-min credentials"]
+    Build["Build image<br/>digest-pinned base, non-root, distroless"]
+    SBOM["syft → SBOM<br/>SPDX + CycloneDX"]
+    Grype["grype<br/>fail on CRITICAL / fixable HIGH"]
+    Sign["cosign sign<br/>keyless — Fulcio cert from the same OIDC token"]
+    Attest["cosign attest<br/>SBOM + SLSA provenance"]
+    Rekor["Rekor transparency log<br/>publicly auditable"]
+    Promote["Promotion PR<br/>bumps image digest in<br/>gitops/apps/&lt;app&gt;/overlays/&lt;env&gt;"]
+    ArgoCD["Argo CD<br/>in-cluster, pulls — never receives a push,<br/>self-heal + prune"]
+    Kyverno["Kyverno admission controller<br/>re-verifies signature + provenance +<br/>registry + digest + pod hardening"]
+    Workload["EKS workload"]
+    PodID["EKS Pod Identity<br/>scoped IAM role, no node-role inheritance"]
+    ESO["External Secrets Operator<br/>→ AWS Secrets Manager, runtime fetch"]
+    Verify["Continuous verification<br/>drift self-heal, Policy Reporter,<br/>scheduled cosign re-verify CronJob"]
+
+    Dev --> PR --> Merge --> OIDC
+    OIDC -->|"the only credential crossing this boundary"| STS
+    STS --> Build --> SBOM --> Grype --> Sign --> Attest --> Rekor
+    Rekor --> Promote --> ArgoCD
+    ArgoCD -->|"applies manifests"| Kyverno
+    Kyverno -->|"admitted only if identity matches"| Workload
+    Workload --> PodID
+    Workload --> ESO
+    Workload --> Verify
+    Verify -.->|"reverts drift"| ArgoCD
+
+    classDef boundary fill:#fff3cd,stroke:#997404,color:#664d03
+    class OIDC,STS,Rekor,ArgoCD,Kyverno,PodID boundary

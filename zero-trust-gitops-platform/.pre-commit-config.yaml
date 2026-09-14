@@ -56,3 +56,9 @@ repos:
         entry: zero-trust-gitops-platform/tools/check-no-secrets.sh
         language: system
         pass_filenames: false
+
+      - id: no-placeholders
+        name: no TODO / TBD / FIXME / lorem ipsum (Operating Rule 6)
+        entry: zero-trust-gitops-platform/tools/check-no-placeholders.sh
+        language: system
+        pass_filenames: false

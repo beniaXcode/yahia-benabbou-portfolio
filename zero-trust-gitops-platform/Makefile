@@ -86,6 +86,14 @@ policy-catalog: ## Regenerate docs/policy-catalog.md from policies/ annotations
 	bash tools/gen-policy-catalog.sh
 	@git diff --quiet docs/policy-catalog.md 2>/dev/null && echo "docs/policy-catalog.md is up to date" || { echo "docs/policy-catalog.md is out of date — commit the regenerated file"; exit 1; }
 
+.PHONY: diagrams
+diagrams: ## Render docs/diagrams/src/*.mmd to SVG (mermaid-cli)
+	bash tools/render-diagrams.sh
+
+.PHONY: docs
+docs: ## Build the mkdocs-material site (fails on any warning, per BRIEF's own gate)
+	mkdocs build --strict
+
 IMAGE_REF ?= ghcr.io/beniaxcode/yahia-benabbou-portfolio/demo-api
 CERT_IDENTITY_REGEXP := ^https://github.com/beniaXcode/yahia-benabbou-portfolio/.github/workflows/build-sign-attest.yml@refs/heads/main$$
 CERT_OIDC_ISSUER := https://token.actions.githubusercontent.com
@@ -118,7 +126,7 @@ demo-attack: ## Run the six attack scenarios against the kind demo (needs `make 
 	exit $$fail
 
 .PHONY: verify
-verify: lint test kyverno-test policy-test iac-scan demo-attack ## Run every gate this repo claims passes, chained
+verify: lint test kyverno-test policy-test iac-scan docs demo-attack ## Run every gate this repo claims passes, chained
 
 .PHONY: clean
 clean: ## Tear down the local kind cluster and remove generated artefacts

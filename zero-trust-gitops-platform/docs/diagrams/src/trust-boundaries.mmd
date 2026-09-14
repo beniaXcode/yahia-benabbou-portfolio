@@ -1,0 +1,37 @@
+flowchart LR
+    subgraph Z1["Zone: Developer"]
+        Dev["Developer workstation"]
+    end
+    subgraph Z2["Zone: GitHub"]
+        Repo["Git repository"]
+        Actions["GitHub Actions runner"]
+    end
+    subgraph Z3["Zone: Sigstore public good"]
+        Fulcio["Fulcio + Rekor"]
+    end
+    subgraph Z4["Zone: AWS"]
+        AWSSTS["STS"]
+        ECR["ECR / GHCR"]
+        SecretsMgr["Secrets Manager"]
+    end
+    subgraph Z5["Zone: Kubernetes control plane"]
+        API["Kubernetes API server"]
+        KyvernoAC["Kyverno admission controller"]
+    end
+    subgraph Z6["Zone: Workload"]
+        Pod["Running pod"]
+    end
+
+    Dev -->|"1: git push — SSH/GPG-signed commit"| Repo
+    Repo -->|"2: webhook triggers"| Actions
+    Actions -->|"3: OIDC token — the only credential crossing to AWS"| AWSSTS
+    Actions -->|"4: keyless signing request — ephemeral cert, no long-lived key"| Fulcio
+    AWSSTS -->|"5: 15-min credentials"| ECR
+    Actions -->|"6: pushes signed, attested image"| ECR
+    Repo -.->|"7: Argo CD polls/pulls — repo never pushes to the cluster"| API
+    API --> KyvernoAC
+    KyvernoAC -->|"8: verifies signature against ECR/GHCR + Fulcio/Rekor before admitting"| Pod
+    Pod -->|"9: Pod Identity — scoped role, no static key"| SecretsMgr
+
+    classDef zone fill:#e7f1ff,stroke:#0d6efd,color:#052c65
+    class Z1,Z2,Z3,Z4,Z5,Z6 zone

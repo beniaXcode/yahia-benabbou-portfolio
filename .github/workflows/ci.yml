@@ -104,3 +104,12 @@ jobs:
             kyverno apply zero-trust-gitops-platform/policies/*/ --resource "$rendered" --policy-report || fail=1
           done
           exit $fail
+
+  no-placeholders:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout
+        uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+
+      - name: Check for TODO / TBD / FIXME / lorem ipsum
+        run: bash zero-trust-gitops-platform/tools/check-no-placeholders.sh

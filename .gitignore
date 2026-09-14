@@ -54,3 +54,6 @@ demo/kind-kubeconfig*
 # --- tool caches ---
 .cache/
 node_modules/
+
+# --- generated docs site (mkdocs build output — rebuilt by CI/Pages, not committed) ---
+/zero-trust-gitops-platform/site/

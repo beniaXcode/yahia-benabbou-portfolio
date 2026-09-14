@@ -14,6 +14,8 @@ file here must serve: *how does code reach production without anyone holding a p
 | `make lint` | pre-commit: fmt, yamllint, gitleaks, the secret guard |
 | `make build` / `make test` / `make image` | demo-api Go binary, tests, container image |
 | `make policy-catalog` | Regenerate `docs/policy-catalog.md` from `policies/` annotations |
+| `make diagrams` | Render `docs/diagrams/src/*.mmd` to SVG |
+| `make docs` | `mkdocs build --strict` |
 | `make verify-chain DIGEST=...` | cosign verify + verify-attestation + Rekor lookup |
 | `make demo` / `make demo-attack` | Full kind GitOps loop; the six attack scenarios |
 | `make verify` | Every gate this repo claims to pass, chained |
