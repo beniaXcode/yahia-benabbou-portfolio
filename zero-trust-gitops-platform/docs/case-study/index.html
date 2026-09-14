@@ -1,0 +1,429 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>zero-trust-gitops-platform — case study</title>
+<meta name="description" content="How code reaches production without anyone holding a permanent key: GitHub OIDC, Sigstore keyless signing, SLSA provenance, and Kyverno admission verification, end to end.">
+<style>
+  :root {
+    --bg: #f8fafc;
+    --bg-elevated: #ffffff;
+    --text: #0f172a;
+    --text-muted: #475569;
+    --border: #e2e8f0;
+    --accent: #0369a1;
+    --accent-soft: #e0f2fe;
+    --code-bg: #0b1120;
+    --code-text: #e2e8f0;
+    --card-bg: #ffffff;
+    --card-shadow: 0 1px 2px rgba(15, 23, 42, 0.06);
+    --ok: #15803d;
+    --deny: #b91c1c;
+  }
+
+  @media (prefers-color-scheme: dark) {
+    :root:not([data-theme="light"]) {
+      --bg: #0b1120;
+      --bg-elevated: #111827;
+      --text: #e2e8f0;
+      --text-muted: #94a3b8;
+      --border: #1f2937;
+      --accent: #38bdf8;
+      --accent-soft: #0c2d3f;
+      --code-bg: #060a13;
+      --code-text: #d1e3f5;
+      --card-bg: #111827;
+      --card-shadow: 0 1px 2px rgba(0, 0, 0, 0.4);
+      --ok: #4ade80;
+      --deny: #f87171;
+    }
+  }
+
+  :root[data-theme="dark"] {
+    --bg: #0b1120;
+    --bg-elevated: #111827;
+    --text: #e2e8f0;
+    --text-muted: #94a3b8;
+    --border: #1f2937;
+    --accent: #38bdf8;
+    --accent-soft: #0c2d3f;
+    --code-bg: #060a13;
+    --code-text: #d1e3f5;
+    --card-bg: #111827;
+    --card-shadow: 0 1px 2px rgba(0, 0, 0, 0.4);
+    --ok: #4ade80;
+    --deny: #f87171;
+  }
+
+  * { box-sizing: border-box; }
+
+  body {
+    margin: 0;
+    padding: 0 16px;
+    background: var(--bg);
+    color: var(--text);
+    font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Helvetica, Arial, sans-serif;
+    line-height: 1.6;
+  }
+
+  header.hero {
+    max-width: 720px;
+    margin: 0 auto;
+    padding-block: 56px 24px;
+  }
+
+  main { max-width: 720px; margin: 0 auto; padding-block: 8px 64px; }
+
+  .wide { max-width: 880px; margin-inline: auto; }
+
+  h1 { font-size: 2rem; line-height: 1.2; margin: 0 0 12px; }
+  h2 { font-size: 1.4rem; margin: 48px 0 16px; border-top: 1px solid var(--border); padding-top: 32px; }
+  h3 { font-size: 1.1rem; margin: 24px 0 8px; }
+  p { margin: 0 0 16px; }
+  a { color: var(--accent); }
+
+  .kicker {
+    text-transform: uppercase;
+    letter-spacing: 0.08em;
+    font-size: 0.75rem;
+    color: var(--text-muted);
+    font-weight: 600;
+  }
+
+  .pullquote {
+    font-size: 1.15rem;
+    font-style: italic;
+    border-left: 3px solid var(--accent);
+    padding: 4px 0 4px 20px;
+    margin: 24px 0;
+    color: var(--text);
+  }
+
+  .diagram-frame {
+    max-width: 880px;
+    margin: 24px auto;
+    padding: 16px;
+    background: var(--bg-elevated);
+    border: 1px solid var(--border);
+    border-radius: 10px;
+    overflow-x: auto;
+  }
+  .diagram-frame img { display: block; margin: 0 auto; max-width: 100%; height: auto; }
+
+  pre {
+    background: var(--code-bg);
+    color: var(--code-text);
+    padding: 16px;
+    border-radius: 8px;
+    overflow-x: auto;
+    font-size: 0.85rem;
+    line-height: 1.5;
+  }
+  code { font-family: ui-monospace, SFMono-Regular, Menlo, Consolas, monospace; }
+  .deny-line { color: var(--deny); }
+  .ok-line { color: var(--ok); }
+
+  .card-grid {
+    display: grid;
+    grid-template-columns: repeat(auto-fit, minmax(240px, 1fr));
+    gap: 16px;
+    margin: 24px 0;
+  }
+  .card {
+    background: var(--card-bg);
+    border: 1px solid var(--border);
+    border-radius: 10px;
+    padding: 16px;
+    box-shadow: var(--card-shadow);
+  }
+  .card h3 { margin-top: 0; font-size: 1rem; }
+  .card p { margin-bottom: 0; font-size: 0.92rem; color: var(--text-muted); }
+  .card .tag {
+    display: inline-block;
+    font-size: 0.72rem;
+    font-weight: 600;
+    color: var(--accent);
+    background: var(--accent-soft);
+    border-radius: 999px;
+    padding: 2px 10px;
+    margin-bottom: 8px;
+  }
+
+  .claims-list { list-style: none; padding: 0; margin: 0; }
+  .claims-list li {
+    display: flex;
+    gap: 12px;
+    padding: 10px 0;
+    border-bottom: 1px solid var(--border);
+    font-size: 0.95rem;
+  }
+  .claims-list li:last-child { border-bottom: none; }
+  .claims-list .num {
+    font-weight: 700;
+    color: var(--accent);
+    min-width: 2.2em;
+  }
+
+  .adr {
+    background: var(--bg-elevated);
+    border: 1px solid var(--border);
+    border-radius: 10px;
+    padding: 16px 20px;
+    margin: 16px 0;
+  }
+  .adr .decision { font-weight: 600; margin-bottom: 4px; }
+  .adr .tradeoff { color: var(--text-muted); font-size: 0.92rem; margin: 0; }
+
+  footer {
+    max-width: 720px;
+    margin: 0 auto;
+    padding-block: 32px 56px;
+    border-top: 1px solid var(--border);
+    color: var(--text-muted);
+    font-size: 0.9rem;
+  }
+
+  .theme-toggle {
+    position: fixed;
+    top: 16px;
+    right: 16px;
+    background: var(--bg-elevated);
+    border: 1px solid var(--border);
+    color: var(--text);
+    border-radius: 999px;
+    padding: 6px 14px;
+    font-size: 0.8rem;
+    cursor: pointer;
+  }
+
+  @media (max-width: 480px) {
+    h1 { font-size: 1.6rem; }
+    h2 { font-size: 1.2rem; }
+  }
+</style>
+</head>
+<body>
+
+<button class="theme-toggle" onclick="
+  var r = document.documentElement;
+  var cur = r.getAttribute('data-theme');
+  if (cur === 'dark') { r.setAttribute('data-theme','light'); this.textContent='Dark mode'; }
+  else { r.setAttribute('data-theme','dark'); this.textContent='Light mode'; }
+">Toggle theme</button>
+
+<header class="hero">
+  <p class="kicker">Engineering case study</p>
+  <h1>How does code reach production without anyone holding a permanent key?</h1>
+  <p class="pullquote">Every credential here is minted for one operation and expires in
+    minutes — not issued once and reused. The cluster re-verifies cryptographic build identity
+    at admission; it never simply trusts that CI did its job.</p>
+  <p><strong>zero-trust-gitops-platform</strong> is a reference implementation of GitOps
+    delivery on AWS EKS: GitHub OIDC → short-lived AWS STS credentials, Sigstore keyless
+    signing, SLSA Build L3 provenance, and Kyverno admission verification, end to end.</p>
+</header>
+
+<main>
+
+  <h2>Context</h2>
+  <p>Most GitOps setups still answer "how does CI reach AWS?" with a long-lived access key sitting
+    in a secrets store, and answer "is this image trustworthy?" with "it came from our registry, so
+    yes." Both are standing trust: a credential that works indefinitely, and a check performed once,
+    early, by a system the cluster then has to take on faith. A platform engineer evaluating this
+    repository is really asking whether the person who built it understands the difference between
+    <em>configuring</em> security controls and <em>proving</em> they hold — which is why every claim
+    below links to the file, test, or attack script that backs it, not just a description of it.</p>
+
+  <h2>The problem with the status quo</h2>
+  <p>Two habits carry almost all of the actual risk in a typical cloud deployment pipeline:</p>
+  <ul>
+    <li><strong>Static keys as the default.</strong> An <code>AWS_ACCESS_KEY_ID</code> in CI secrets
+      is valid until someone remembers to rotate it — often only after an incident makes that
+      memorable.</li>
+    <li><strong>Implicit trust in CI's verdict.</strong> If the pipeline says a build passed, the
+      cluster deploys it. Nothing re-checks that claim at the one place that actually matters: the
+      moment the workload starts running.</li>
+  </ul>
+  <p>This platform removes both defaults rather than hardening them: no long-lived credential
+    exists anywhere in the system to rotate, and the cluster independently re-derives its own
+    verdict about every image before admitting it.</p>
+
+  <h2>Architecture</h2>
+  <p>Every credential exchange in the system, start to finish — the diagram below is the same one
+    committed at <code>docs/diagrams/src/trust-chain.mmd</code> and rendered for the docs site; open
+    it directly if the inline version below doesn't render in your viewer.</p>
+  <div class="diagram-frame">
+    <img src="../diagrams/trust-chain.svg" alt="Trust chain diagram: developer through GitHub Actions, AWS STS, Sigstore, Argo CD, Kyverno, to the running workload">
+  </div>
+  <p>A GitHub OIDC token — audience-bound to <code>sts.amazonaws.com</code>, scoped by a trust
+    policy that pins the exact repository and ref — is the only credential that ever crosses the
+    GitHub-to-AWS boundary, and it expires in 15 minutes. The same token is exchanged with Fulcio
+    for a signing certificate, so the image's signature <em>is</em> the workflow's identity — there
+    is no private key to leak. Argo CD pulls from Git; the cluster is never reachable from CI at
+    all. Kyverno re-verifies signature, SLSA provenance, SBOM attestation, and pod hardening
+    independently at admission, using the same identity the build workflow's own self-check used.
+    Full write-up: <a href="../architecture.md">docs/architecture.md</a>.</p>
+
+  <h2>Key decisions</h2>
+  <p>Six ADRs record every architectural trade-off made building this; four of the most
+    consequential:</p>
+
+  <div class="adr">
+    <p class="decision">Sigstore keyless signing over a static key pair</p>
+    <p class="tradeoff"><strong>Trade-off:</strong> no signing secret exists to leak or rotate, but
+      signing now depends on Sigstore's public-good Fulcio/Rekor infrastructure being reachable and
+      trustworthy — a dependency this repo's own threat model names explicitly as something it does
+      not defend against.
+      <a href="../adr/0003-sigstore-keyless-signing.md">ADR-0003 →</a></p>
+  </div>
+
+  <div class="adr">
+    <p class="decision">EKS Pod Identity over IRSA</p>
+    <p class="tradeoff"><strong>Trade-off:</strong> a simpler, single-service-principal trust
+      condition to audit, at the cost of requiring a newer EKS add-on that older clusters can't run
+      — which is exactly why IRSA stays documented as the fallback rather than being omitted.
+      <a href="../adr/0005-eks-pod-identity-over-irsa.md">ADR-0005 →</a></p>
+  </div>
+
+  <div class="adr">
+    <p class="decision">GHCR over ECR for this specific deployment</p>
+    <p class="tradeoff"><strong>Trade-off:</strong> this instance runs without an AWS account
+      behind it, so it pushes to GHCR with the workflow's own ambient token instead of the
+      Terraform-provisioned, IAM-scoped ECR repository the code still ships and tests — meaning a
+      reviewer sees a real control (<code>infra/terraform/modules/ecr</code>) that isn't the one
+      actually protecting this particular image.
+      <a href="../adr/0001-ghcr-over-ecr-for-this-deployment.md">ADR-0001 →</a></p>
+  </div>
+
+  <div class="adr">
+    <p class="decision">A documented fallback for local signing, not a fragile approximation</p>
+    <p class="tradeoff"><strong>Trade-off:</strong> the local <code>kind</code> demo can't reach
+      Fulcio, so it switches Kyverno to a key-based attestor with an ephemeral, never-committed key
+      pair instead of standing up a full local Sigstore stack — proving the same admission logic
+      (reject an untrusted signer) without proving the keyless mechanism itself.
+      <a href="../adr/0006-local-demo-fidelity-fallbacks.md">ADR-0006 →</a></p>
+  </div>
+
+  <h2>Threat model highlights</h2>
+  <p>Six attacker scenarios, each demonstrated by a real script under
+    <code>demo/attack/</code> that attempts the attack and must fail. Full detail, including
+    residual risk for each: <a href="../threat-model.md">docs/threat-model.md</a>.</p>
+  <div class="card-grid wide">
+    <div class="card">
+      <span class="tag">01</span>
+      <h3>Unsigned image</h3>
+      <p>A genuinely unsigned image, correct in every other respect, is denied by the same
+        signature-verification policy that runs at admission.</p>
+    </div>
+    <div class="card">
+      <span class="tag">02</span>
+      <h3>Mutable tag</h3>
+      <p><code>demo-api:latest</code> is denied before signature verification is even reached —
+        a tag can be repointed after the fact; a digest cannot.</p>
+    </div>
+    <div class="card">
+      <span class="tag">03</span>
+      <h3>Privileged pod</h3>
+      <p>A pod requesting <code>privileged</code>, a <code>hostPath</code> mount, and
+        <code>hostPID</code> together — denied outright by workload-hardening policy.</p>
+    </div>
+    <div class="card">
+      <span class="tag">04</span>
+      <h3>Wrong signer identity</h3>
+      <p>The most convincing one: a genuinely, validly signed image — just not by the identity
+        this cluster trusts. Proves the gate checks <em>who</em> signed, not merely that
+        something did.</p>
+    </div>
+    <div class="card">
+      <span class="tag">05</span>
+      <h3>Out-of-band drift</h3>
+      <p>A direct <code>kubectl patch</code> against a live Deployment is reverted by Argo CD's
+        self-heal within one reconciliation interval — no exception for direct cluster access.</p>
+    </div>
+    <div class="card">
+      <span class="tag">06</span>
+      <h3>Exfiltration attempt</h3>
+      <p>A pod with no Pod Identity association tries to reach instance metadata at
+        <code>169.254.169.254</code> — blocked before a connection is even established.</p>
+    </div>
+  </div>
+
+  <h3>What a denial actually looks like</h3>
+  <p>Two of the six, in the exact message text each policy returns — sourced directly from the
+    committed policy files, not paraphrased, and reproduced in the standard Kubernetes admission
+    error format a real <code>kubectl apply</code> shows. (The full six-attack run against a live
+    cluster is captured by <code>make demo-attack</code>, which is what a real terminal recording
+    of this section will show once it has been run somewhere with Docker — see the repository's
+    own <code>docs/fidelity.md</code> for exactly what's been verified where.)</p>
+  <pre><code>$ kubectl apply -f attack-latest-tag.yaml
+Error from server: admission webhook "validate.kyverno.svc-fail" denied the request:
+
+resource Pod/attack-latest-tag was blocked due to the following policies
+
+require-image-digest:
+  autogen-containers-require-digest: <span class="deny-line">All container images must be referenced by digest (@sha256:...), not a mutable tag.</span>
+
+$ kubectl apply -f attack-privileged-pod.yaml
+Error from server: admission webhook "validate.kyverno.svc-fail" denied the request:
+
+resource Pod/attack-privileged-pod was blocked due to the following policies
+
+disallow-host-namespaces:
+  check-host-namespaces-and-privileged: <span class="deny-line">hostNetwork/hostIPC/hostPID, hostPath volumes, and privileged containers are not allowed.</span></code></pre>
+
+  <h2>Results</h2>
+  <p>Every number below is checkable directly against the repository — the linked file is the
+    proof, not an assertion:</p>
+  <ul class="claims-list">
+    <li><span class="num">0</span> GitHub Actions secrets in this repository — enforced by
+      <code>tools/check-no-secrets.sh</code> on every commit and push.</li>
+    <li><span class="num">0</span> long-lived AWS access keys anywhere — denied at Terraform plan
+      time by a conftest rule with a fail fixture proving it actually rejects one.</li>
+    <li><span class="num">0</span> private signing keys — signing identity is the workflow itself.</li>
+    <li><span class="num">✓</span> every deployed image verified at admission against
+      <em>who built it</em>, not merely that it's signed.</li>
+    <li><span class="num">6</span> attack scenarios, each with a real script that must fail to
+      succeed.</li>
+    <li><span class="num">32</span> Kyverno policy tests, each with a passing <em>and</em> a
+      failing fixture — <code>kyverno test policies/</code> is green.</li>
+  </ul>
+
+  <h2>What I would do differently at real scale</h2>
+  <p>This is a demo-scale, single-cloud, single-cluster reference — honest about it rather than
+    dressed up as more. At real scale, in order of what I'd change first:</p>
+  <ul>
+    <li><strong>A private Sigstore instance</strong> (Fulcio/Rekor/CTLog run in-house, per
+      <code>sigstore/scaffolding</code>) once signing volume or compliance requirements justify
+      not depending on the public-good instance — the tradeoff this repo's own ADR-0003 names
+      explicitly.</li>
+    <li><strong>Least-privileged platform NetworkPolicies</strong>, not the functional baseline
+      this repo ships — enumerating Argo CD's and Kyverno's actual internal ports properly needs a
+      live cluster to validate against without risking an outage, which this build environment
+      never had.</li>
+    <li><strong>Multi-account AWS,</strong> not a single account's IAM boundaries doing all the
+      isolation work — separate accounts per environment, with the OIDC trust policy scoped per
+      account.</li>
+    <li><strong>Runtime detection</strong> (Falco or Tetragon) — deliberately deferred here
+      (<a href="../adr/0006-local-demo-fidelity-fallbacks.md">ADR-0006</a>) rather than shipped
+      half-tested; it's the clearest next control to add with real infrastructure to validate it
+      against.</li>
+  </ul>
+
+  <h2>Links</h2>
+  <ul>
+    <li><a href="https://github.com/beniaXcode/yahia-benabbou-portfolio/tree/main/zero-trust-gitops-platform">Repository</a></li>
+    <li><a href="../index.md">Full documentation site</a> — architecture, identity model, supply
+      chain, threat model, compliance mapping, ADRs, runbooks</li>
+    <li><a href="../fidelity.md">Fidelity notes</a> — exactly what could be verified for real in
+      this build environment versus asserted, phase by phase, stated plainly</li>
+  </ul>
+
+</main>
+
+<footer>
+  <p>zero-trust-gitops-platform — a reference implementation, published as part of
+    <a href="https://github.com/beniaXcode/yahia-benabbou-portfolio">beniaXcode/yahia-benabbou-portfolio</a>.</p>
+</footer>
+
+</body>
+</html>

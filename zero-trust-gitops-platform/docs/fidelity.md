@@ -210,3 +210,36 @@ other branch and case study this portfolio repository hosts, not just this proje
 session flagged before starting Phase 9, which is a second, independent reason (beyond tool access)
 this was left as a reviewable script rather than something to execute unattended even if the tools
 had existed.
+
+## Phase 10 — Portfolio case study
+
+`docs/case-study/index.html`, `summary.md`, and `assets/og-image.{svg,png}` were built and are real
+content, but two things about them could not be verified the way every other gate in this repo is
+verified — for real, by running it — and are recorded here rather than left implicit:
+
+**No browser exists in this sandbox.** The case-study page's light/dark theming (the three-tier
+`:root` / `@media (prefers-color-scheme: dark)` / `:root[data-theme="dark"]` override pattern),
+its JS theme-toggle button, and its responsive behaviour down to 400px were written to the same
+rules this project's own artifact-quality conventions require and reviewed by re-reading the
+markup and CSS for structural correctness (matching open/close tags, the media query actually
+guarding the right selector, `overflow-x: auto` on the two elements wide enough to need it), but
+none of that has been confirmed by an actual rendering engine. The `og-image.png` is the one
+visual claim that *was* checked for real: rendered from the committed SVG via `cairosvg` (a real
+library, actually installed and invoked in this sandbox) and inspected with the Read tool's image
+display, which did show the expected layout.
+
+**The "what a denial actually looks like" block is reconstructed, not captured.** Its two policy
+message strings are copied verbatim from the committed `require-image-digest.yaml` and
+`disallow-host-namespaces.yaml` policy files, and the surrounding `kubectl apply` / admission
+webhook error format matches Kyverno's real, documented output shape — but no live cluster has
+ever produced this exact transcript in this sandbox (same root cause as every other cluster-facing
+claim in this repo: no reachable Docker daemon). The page says so explicitly, in the paragraph
+immediately above the block, rather than presenting reconstructed output as a captured terminal
+session.
+
+**Not added to `mkdocs.yml`'s nav, deliberately.** BRIEF.md describes the case study as a
+standalone artifact meant for `profile.nearvic.com`, not a page within the generated docs site —
+it links back to the docs site (`../index.md`) but isn't linked from it, since a documentation
+site's own case-study crosslink would be a strange asymmetry for a file that's supposed to stand
+on its own when opened directly (including via a plain `file://` URL, which is why it has no
+external resource dependencies at all — no web font, no CDN script).

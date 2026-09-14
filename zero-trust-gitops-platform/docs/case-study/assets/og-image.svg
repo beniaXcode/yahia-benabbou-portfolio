@@ -1,0 +1,22 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="1280" height="640" viewBox="0 0 1280 640">
+  <rect width="1280" height="640" fill="#0b1120"/>
+  <rect x="0" y="0" width="1280" height="6" fill="#38bdf8"/>
+  <text x="80" y="140" font-family="Helvetica, Arial, sans-serif" font-size="52" font-weight="700" fill="#f8fafc">zero-trust-gitops-platform</text>
+  <text x="80" y="196" font-family="Helvetica, Arial, sans-serif" font-size="26" fill="#94a3b8">GitOps delivery on AWS EKS — zero long-lived credentials,</text>
+  <text x="80" y="232" font-family="Helvetica, Arial, sans-serif" font-size="26" fill="#94a3b8">cryptographically attested images, policy-enforced admission</text>
+
+  <g font-family="Helvetica, Arial, sans-serif" font-size="24" fill="#e2e8f0">
+    <circle cx="96" cy="320" r="6" fill="#38bdf8"/>
+    <text x="120" y="328">0 GitHub Actions secrets in this repository</text>
+    <circle cx="96" cy="368" r="6" fill="#38bdf8"/>
+    <text x="120" y="376">0 long-lived AWS access keys, anywhere</text>
+    <circle cx="96" cy="416" r="6" fill="#38bdf8"/>
+    <text x="120" y="424">0 private signing keys — the workflow itself is the identity</text>
+    <circle cx="96" cy="464" r="6" fill="#38bdf8"/>
+    <text x="120" y="472">Every image verified at admission against who built it</text>
+    <circle cx="96" cy="512" r="6" fill="#38bdf8"/>
+    <text x="120" y="520">6 attack scenarios, blocked and tested on every pull request</text>
+  </g>
+
+  <text x="80" y="592" font-family="Helvetica, Arial, sans-serif" font-size="22" fill="#64748b">github.com/beniaXcode/yahia-benabbou-portfolio</text>
+</svg>
