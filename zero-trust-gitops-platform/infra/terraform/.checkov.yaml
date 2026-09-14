@@ -1,0 +1,11 @@
+# infra/terraform/policy/tests/ holds single-resource fixtures for the
+# conftest/Rego rules in infra/terraform/policy/ — each is deliberately
+# minimal (it exists to exercise exactly one rule) and isn't meant to pass
+# every general-purpose hardening check checkov runs against real infra.
+skip-path:
+  - policy/tests
+
+compact: true
+quiet: true
+framework:
+  - terraform

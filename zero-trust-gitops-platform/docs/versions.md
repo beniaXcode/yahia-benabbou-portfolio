@@ -78,6 +78,16 @@ The runtime stage uses the explicit `-debian12` tag (distroless's current
 recommended form) rather than the legacy bare `distroless/static` alias,
 which also resolves but leaves the OS version implicit.
 
+## Terraform providers (`infra/terraform/`)
+
+| Provider | Version | Resolved via | Date |
+|---|---|---|---|
+| `hashicorp/aws` | 6.64.0 | `releases.hashicorp.com/terraform-provider-aws/` directory listing (its highest published `terraform-provider-aws_X.Y.Z_linux_amd64.zip`), SHA256-verified against that same host's `..._SHA256SUMS` file. This corrects the item deferred in Phase 0/1 below — the Go-module-proxy trick used for other tools resolves this specific provider to a stale, unrelated `v1.x` tag series, since its Go module path doesn't track its real (Terraform Registry) release versioning | 2026-09-14 (Phase 2) |
+
+See `docs/fidelity.md` for how `terraform init`/`plan`/`test` actually ran
+against this provider in a sandbox where `registry.terraform.io` itself is
+blocked.
+
 ## Deferred — resolved when the phase that consumes them starts
 
 Go-module resolution is only trustworthy when the module's import path
@@ -85,11 +95,17 @@ itself carries the major-version suffix (proof the maintainer publishes
 through Go's module system). The entries below don't meet that bar here, or
 need a source this sandbox cannot reach at all; guessing them now would
 violate Operating Rule 4, so each is deferred to the phase that first needs
-it and re-checked against a reachable source there:
+it and re-checked against a reachable source there. Two items are handled
+differently — never pinned at all, on purpose, rather than deferred to a
+later resolution: `modules/eks`'s `kubernetes_version` variable has no
+default (AWS's supported-version list changes over time, so any value
+hardcoded today would eventually be a guess), and `aws_eks_addon.pod_identity`
+sets no `addon_version` (AWS picks its default rather than this repo pinning
+one it can't check against a compatibility matrix). See `docs/fidelity.md`
+for why those specific lookups aren't reachable from this sandbox.
 
 | Item | Why deferred | Resolve in |
 |---|---|---|
-| `hashicorp/aws` Terraform provider | Its Go module only exposes a stale `v1.x` tag series unrelated to its real (Terraform Registry) versioning; `registry.terraform.io` is not reachable from this sandbox | Phase 2 (Terraform modules) |
 | `sigstore/scaffolding` chart/manifest version | GitHub-hosted, not a Go module release scheme this proxy can resolve | Phase 5/6 (local Fulcio/Rekor for the kind demo) |
 | SLSA Build L3 generator reusable-workflow tag | Consumed by ref (`@vX.Y.Z`), GitHub-hosted | Phase 4 (build-sign-attest.yml) |
 | Every third-party GitHub Action commit SHA (`actions/checkout`, `docker/build-push-action`, `sigstore/cosign-installer`, `aws-actions/configure-aws-credentials`, `anchore/sbom-action`, `github/codeql-action`, `ossf/scorecard-action`, `googleapis/release-please-action`, etc.) | `github.com`/`api.github.com` access from this sandbox is scoped to this session's own repo; each action's repo would need to be attached individually right before its workflow is authored | Whichever workflow first references it (Phases 3-9) |

@@ -15,8 +15,18 @@ kubeconfig.*
 !*.tfvars.example
 
 # --- terraform ---
+# .terraform.lock.hcl is intentionally NOT ignored in general: root
+# configurations (infra/terraform/envs/*) commit it for reproducible
+# provider versions, per Terraform's own recommendation. Everything under
+# infra/terraform/modules/ is validated standalone in CI (each has its own
+# required_providers) but isn't an independent root meant to be applied on
+# its own, so no lock file is committed for those — including
+# tfstate-backend, whose one real, standalone `terraform init` happens by
+# hand on whoever actually bootstraps a backend, not here.
 .terraform/
-.terraform.lock.hcl
+/zero-trust-gitops-platform/infra/terraform/modules/*/.terraform.lock.hcl
+/zero-trust-gitops-platform/infra/terraform/policy/tests/**/.terraform.lock.hcl
+/zero-trust-gitops-platform/infra/terraform/tests/.terraform.lock.hcl
 *.tfstate
 *.tfstate.*
 crash.log

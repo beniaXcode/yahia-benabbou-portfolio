@@ -50,6 +50,32 @@ image: ## Build the demo-api container image (needs a reachable Docker daemon)
 		--build-arg VERSION=$(VERSION) --build-arg COMMIT=$(COMMIT) --build-arg BUILD_DATE=$(BUILD_DATE) \
 		-t $(IMAGE) -f $(APP_DIR)/Dockerfile $(APP_DIR)
 
+TF_DIR := infra/terraform
+
+.PHONY: tf-fmt
+tf-fmt: ## Check every .tf file is terraform fmt-clean
+	terraform fmt -check -recursive $(TF_DIR)
+
+.PHONY: tf-validate
+tf-validate: ## terraform init -backend=false + validate, every module and env
+	@for d in $(TF_DIR)/modules/*/ $(TF_DIR)/envs/dev; do \
+		echo "== $$d =="; \
+		(cd "$$d" && terraform init -input=false -backend=false >/dev/null && terraform validate) || exit 1; \
+	done
+
+.PHONY: tf-test
+tf-test: ## terraform test (native .tftest.hcl, mocked provider — no AWS needed)
+	cd $(TF_DIR)/tests && terraform init -input=false -backend=false >/dev/null && terraform test
+
+.PHONY: policy-test
+policy-test: ## Plan every conftest pass/fail fixture and assert the expected verdict
+	bash $(TF_DIR)/policy/run-fixture-tests.sh
+
+.PHONY: iac-scan
+iac-scan: ## checkov (static) + tflint (core rules; no AWS-ruleset plugin — see docs/fidelity.md) across infra/terraform
+	checkov -d $(TF_DIR) --config-file $(TF_DIR)/.checkov.yaml
+	@for d in $(TF_DIR)/modules/*/ $(TF_DIR)/envs/dev; do (cd "$$d" && tflint) || exit 1; done
+
 .PHONY: policy-catalog
 policy-catalog: ## Regenerate docs/policy-catalog.md from policies/ annotations (Phase 3)
 	@echo "not yet implemented (Phase 3)"; exit 1
