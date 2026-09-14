@@ -78,7 +78,32 @@ it and re-checked against a reachable source there:
 
 ## CLI availability in this sandbox (informational, not a version claim)
 
-See the Phase 0 report for which of the above were actually installed and
-runnable here versus written-correct-but-unverified (this sandbox has no
-Docker daemon, so anything requiring `kind` cannot be exercised locally
-regardless of whether the binary installs).
+Installed and runnable (via `go install` against the pinned version above,
+or a direct binary download for the two tools whose `go.mod` has `replace`
+directives that block `go install`): `terraform`, `kubectl`, `helm`,
+`kustomize`, `kind`, `cosign`, `syft`, `grype`, `gitleaks`, `tflint`,
+`conftest`, `yq`, `chainsaw`, `pre-commit`, `yamllint`.
+
+Not available here:
+- **`kyverno` CLI** (`kubectl-kyverno`) — `kyverno/kyverno`'s `go.mod` carries
+  `replace` directives, which Go refuses to honor for a remote `go install`
+  ("must not contain directives that would cause it to be interpreted
+  differently than if it were the main module"). The same class of error
+  blocked a direct `go install` of `terraform` (worked around above via
+  `releases.hashicorp.com`); no equivalent public binary CDN is reachable
+  for kyverno-cli from this sandbox. Needed for real starting Phase 3 — will
+  attach the `kyverno/kyverno` repo via `add_repo` at that point and build
+  from a local clone, or find another route, rather than skip the check.
+- **`checkov`** — `pip install` failed on an unrelated system package
+  conflict (`packaging` installed by `apt` has no pip `RECORD`, so pip can't
+  upgrade it). Needed starting Phase 2; will resolve then (likely a venv).
+- **`mkdocs-material`** — not installed yet; not needed before Phase 8.
+- **Docker daemon** — not reachable at all (`docker info` fails), so `kind`
+  cannot actually bring up a cluster here regardless of the binary being
+  installed. Every gate under Phases 5-7 that needs a running cluster will
+  be written and validated for correctness (manifests, policy YAML, script
+  logic) but the actual `make demo`/`make demo-attack` run has to happen in
+  CI (`e2e-kind.yml`, a GitHub-hosted runner with Docker) or on a
+  contributor's machine — never claimed as "passed" from inside this sandbox.
+- **No AWS account** — `terraform plan`/`apply` against real AWS resources,
+  and anything that needs live EKS/ECR, cannot be exercised here either.
