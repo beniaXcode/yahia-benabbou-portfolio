@@ -12,8 +12,13 @@ metadata:
       project's own registry — either its ECR repository (the Terraform-
       provisioned production target, see infra/terraform/modules/ecr) or
       its GHCR namespace (what this specific deployment's CI actually
-      pushes to, since no AWS account backs it — see docs/fidelity.md).
-      No Docker Hub, no arbitrary third-party registry.
+      pushes to, since no AWS account backs it — see docs/fidelity.md) —
+      with one narrow, explicitly digest-pinned exception for the upstream
+      cosign CLI image used by gitops/apps/demo-api/base's PreSync
+      verification hook (and Phase 6's continuous-verification CronJob):
+      that image runs no application code and is pinned to one exact
+      digest, rotated only by editing this policy alongside
+      docs/versions.md. No Docker Hub, no arbitrary third-party registry.
     nearvic.io/rationale: >-
       Signature verification only means something if the signer's identity
       also implies where the image lives. Allowing arbitrary registries
@@ -34,7 +39,7 @@ spec:
               kinds:
                 - Pod
       validate:
-        message: "Images must come from this project's own ECR repository or its ghcr.io/beniaxcode/yahia-benabbou-portfolio namespace."
+        message: "Images must come from this project's own ECR repository, its ghcr.io/beniaxcode/yahia-benabbou-portfolio namespace, or the one pinned cosign tooling image this policy explicitly allowlists."
         foreach:
           - list: "request.object.spec.containers"
             deny:
@@ -46,3 +51,8 @@ spec:
                   - key: "{{ element.image }}"
                     operator: NotEquals
                     value: "ghcr.io/beniaxcode/yahia-benabbou-portfolio/*"
+                  - key: "{{ element.image }}"
+                    operator: NotEquals
+                    # v2.6.5 — see docs/versions.md. Exact digest, not a tag:
+                    # bumping this requires editing this policy on purpose.
+                    value: "gcr.io/projectsigstore/cosign@sha256:ad281047f85c5e1fc6ffbc30c2b55be3b07b4032bef715a12122ce5829619aca"

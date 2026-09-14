@@ -1,0 +1,33 @@
+# The app-of-apps root named directly in BRIEF.md §6 Phase 5: a single
+# Application whose only job is to sync gitops/platform/ recursively, so
+# every platform component's own Application object (gitops/platform/*/
+# application.yaml) gets created by Argo CD reconciling *this* Application —
+# nothing under gitops/platform/ is ever applied by a human running kubectl.
+# This Application is itself applied once, by hand, during cluster bring-up
+# (demo/up.sh) — it is the one manifest in this entire repository that isn't
+# reached by GitOps, because something has to be first.
+apiVersion: argoproj.io/v1alpha1
+kind: Application
+metadata:
+  name: root-platform
+  namespace: argocd
+  finalizers:
+    - resources-finalizer.argocd.argoproj.io
+spec:
+  project: default
+  source:
+    repoURL: https://github.com/beniaXcode/yahia-benabbou-portfolio.git
+    targetRevision: main
+    path: zero-trust-gitops-platform/gitops/platform
+    directory:
+      recurse: true
+  destination:
+    server: https://kubernetes.default.svc
+    namespace: argocd
+  syncPolicy:
+    automated:
+      selfHeal: true
+      prune: true
+    syncOptions:
+      - CreateNamespace=true
+      - ServerSideApply=true

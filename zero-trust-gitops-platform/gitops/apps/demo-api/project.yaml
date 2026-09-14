@@ -1,0 +1,42 @@
+# AppProject, not "default": scopes what the three demo-api Applications
+# (see applicationset.yaml) may touch, and is the only place Argo CD's
+# syncWindows concept can be attached — sync windows are a project-level
+# construct, not something an individual Application can carry on its own.
+apiVersion: argoproj.io/v1alpha1
+kind: AppProject
+metadata:
+  name: demo-api
+  namespace: argocd
+spec:
+  description: demo-api's three environment Applications (dev, staging, prod).
+  sourceRepos:
+    - https://github.com/beniaXcode/yahia-benabbou-portfolio.git
+  destinations:
+    - server: https://kubernetes.default.svc
+      namespace: demo-api-dev
+    - server: https://kubernetes.default.svc
+      namespace: demo-api-staging
+    - server: https://kubernetes.default.svc
+      namespace: demo-api-prod
+  # The Namespace itself (gitops/apps/demo-api/base/namespace.yaml) is
+  # cluster-scoped; everything else this app deploys is namespace-scoped.
+  clusterResourceWhitelist:
+    - group: ""
+      kind: Namespace
+  namespaceResourceWhitelist:
+    - group: "*"
+      kind: "*"
+  orphanedResources:
+    warn: true
+  # Illustrative, not a real business requirement: denies unattended prod
+  # syncs during a nightly low-observability window, with `manualSync: true`
+  # so a human can still push through a genuine hotfix. dev/staging carry no
+  # window at all — every other environment syncs on every commit.
+  syncWindows:
+    - kind: deny
+      schedule: "0 0 * * *"
+      duration: 1h
+      applications:
+        - demo-api-prod
+      manualSync: true
+      timeZone: UTC

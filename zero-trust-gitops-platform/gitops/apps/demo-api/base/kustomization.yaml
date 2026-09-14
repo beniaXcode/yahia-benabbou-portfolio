@@ -1,0 +1,34 @@
+apiVersion: kustomize.config.k8s.io/v1beta1
+kind: Kustomization
+
+namespace: demo-api
+
+resources:
+  - namespace.yaml
+  - deployment.yaml
+  - service.yaml
+  - presync-verify-job.yaml
+
+# The single source of truth for the image this app runs. promote.yml's
+# `kustomize edit set image demo-api=...` (see .github/workflows/promote.yml)
+# rewrites the digest here — nowhere else — on every overlay.
+images:
+  - name: demo-api
+    newName: ghcr.io/beniaxcode/yahia-benabbou-portfolio/demo-api
+    digest: sha256:0000000000000000000000000000000000000000000000000000000000000
+
+# Keeps the PreSync verification Job's IMAGE_REF in lockstep with the
+# Deployment's own container image, so the two can never drift apart —
+# there is exactly one place (the `images:` block above) that ever names
+# the digest being deployed.
+replacements:
+  - source:
+      kind: Deployment
+      name: demo-api
+      fieldPath: spec.template.spec.containers.[name=demo-api].image
+    targets:
+      - select:
+          kind: Job
+          name: demo-api-presync-verify
+        fieldPaths:
+          - spec.template.spec.containers.[name=cosign-verify].env.[name=IMAGE_REF].value

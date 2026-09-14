@@ -1,0 +1,13 @@
+apiVersion: v1
+kind: Namespace
+metadata:
+  name: demo-api
+  labels:
+    app.kubernetes.io/name: demo-api
+    app.kubernetes.io/managed-by: argocd
+    # Matched by generate/default-deny-networkpolicy.yaml and
+    # generate/namespace-resourcequota.yaml's namespaceSelector exclusions —
+    # this is a real workload namespace, not kube-system, so both generate
+    # rules fire on it (C9: every namespace starts default-deny).
+    pod-security.kubernetes.io/enforce: restricted
+    pod-security.kubernetes.io/enforce-version: latest

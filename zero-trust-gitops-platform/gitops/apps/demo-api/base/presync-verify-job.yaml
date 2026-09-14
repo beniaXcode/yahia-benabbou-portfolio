@@ -1,0 +1,64 @@
+# Continuous-verification-at-deploy-time (not just at admission): before
+# Argo CD lets a Sync proceed, this Job independently re-runs the exact
+# `cosign verify` command build-sign-attest.yml's own self-check — and this
+# repo's README — publish, against the digest this overlay is about to
+# deploy. Kyverno's verifyImages policies (policies/supply-chain/) already
+# re-verify at admission (C4/C8); this hook adds a second, earlier checkpoint
+# that fails the *sync* itself, before any manifest reaches the API server,
+# with the same identity/issuer this repo publishes.
+apiVersion: batch/v1
+kind: Job
+metadata:
+  name: demo-api-presync-verify
+  labels:
+    app.kubernetes.io/name: demo-api
+    app.kubernetes.io/managed-by: argocd
+  annotations:
+    argocd.argoproj.io/hook: PreSync
+    argocd.argoproj.io/hook-delete-policy: BeforeHookCreation,HookSucceeded
+spec:
+  backoffLimit: 0
+  template:
+    metadata:
+      labels:
+        app.kubernetes.io/name: demo-api
+        app.kubernetes.io/managed-by: argocd
+    spec:
+      restartPolicy: Never
+      automountServiceAccountToken: false
+      securityContext:
+        runAsNonRoot: true
+        runAsUser: 65532
+        runAsGroup: 65532
+        seccompProfile:
+          type: RuntimeDefault
+      containers:
+        - name: cosign-verify
+          # v2.6.5 — see docs/versions.md
+          image: gcr.io/projectsigstore/cosign@sha256:ad281047f85c5e1fc6ffbc30c2b55be3b07b4032bef715a12122ce5829619aca
+          # IMAGE_REF is kept in lockstep with the Deployment's own container
+          # image by kustomization.yaml's `replacements:` block — never
+          # hand-edited, so it can never drift from what is actually deployed.
+          env:
+            - name: IMAGE_REF
+              value: PLACEHOLDER_REPLACED_BY_KUSTOMIZE
+          args:
+            - verify
+            - "$(IMAGE_REF)"
+            - --certificate-identity-regexp
+            - ^https://github.com/beniaXcode/yahia-benabbou-portfolio/.github/workflows/build-sign-attest.yml@refs/heads/main$
+            - --certificate-oidc-issuer
+            - https://token.actions.githubusercontent.com
+          securityContext:
+            allowPrivilegeEscalation: false
+            readOnlyRootFilesystem: true
+            capabilities:
+              drop:
+                - ALL
+          resources:
+            requests:
+              cpu: 10m
+              memory: 32Mi
+            limits:
+              cpu: 200m
+              memory: 128Mi

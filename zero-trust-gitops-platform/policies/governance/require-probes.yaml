@@ -7,6 +7,12 @@ metadata:
     policies.kyverno.io/category: Governance
     policies.kyverno.io/severity: low
     policies.kyverno.io/subject: Pod
+    # Scoped off Job/CronJob: a run-to-completion Pod has no meaningful
+    # "ongoing health" for a liveness/readiness probe to describe — unlike
+    # gitops/apps/demo-api/base/presync-verify-job.yaml's PreSync hook, which
+    # is expected to run once and exit, this rule's rationale (Argo CD Health
+    # tracking a long-running workload) simply doesn't apply to it.
+    pod-policies.kyverno.io/autogen-controllers: DaemonSet,Deployment,StatefulSet
     policies.kyverno.io/description: >-
       Every container must define both a readinessProbe and a livenessProbe.
     nearvic.io/rationale: >-

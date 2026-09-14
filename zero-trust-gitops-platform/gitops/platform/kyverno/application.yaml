@@ -1,0 +1,38 @@
+apiVersion: argoproj.io/v1alpha1
+kind: Application
+metadata:
+  name: kyverno
+  namespace: argocd
+spec:
+  project: default
+  sources:
+    - repoURL: https://kyverno.github.io/kyverno/
+      chart: kyverno
+      targetRevision: 3.9.1  # app v1.19.1 — see docs/versions.md
+      helm:
+        valueFiles:
+          - $values/zero-trust-gitops-platform/gitops/platform/kyverno/values.yaml
+    - repoURL: https://github.com/beniaXcode/yahia-benabbou-portfolio.git
+      targetRevision: main
+      ref: values
+    # C8: the same policies/ this repo's CI shift-left step (ci.yml) runs
+    # against `kustomize build` output are the ones actually enforced at
+    # admission — one source of truth, synced here as plain manifests.
+    # `tests/**` is excluded: those are kyverno-test.yaml fixtures and their
+    # sample Pod resources, never meant to reach a real cluster.
+    - repoURL: https://github.com/beniaXcode/yahia-benabbou-portfolio.git
+      targetRevision: main
+      path: zero-trust-gitops-platform/policies
+      directory:
+        recurse: true
+        exclude: "tests/**"
+  destination:
+    server: https://kubernetes.default.svc
+    namespace: kyverno
+  syncPolicy:
+    automated:
+      selfHeal: true
+      prune: true
+    syncOptions:
+      - CreateNamespace=true
+      - ServerSideApply=true  # kyverno's CRDs exceed kubectl's last-applied-configuration annotation limit

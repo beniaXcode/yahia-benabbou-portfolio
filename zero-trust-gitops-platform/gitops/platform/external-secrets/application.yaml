@@ -1,0 +1,32 @@
+# Installs the operator only. The ClusterSecretStore/ExternalSecret objects
+# that actually connect it to AWS Secrets Manager via Pod Identity are a
+# Phase 6 concern (runtime zero-trust posture) — this repo doesn't wire a
+# secret backend into a platform-bootstrap Application, since which backend
+# to trust is a workload-level decision, not a cluster-bootstrap one.
+apiVersion: argoproj.io/v1alpha1
+kind: Application
+metadata:
+  name: external-secrets
+  namespace: argocd
+spec:
+  project: default
+  sources:
+    - repoURL: https://charts.external-secrets.io
+      chart: external-secrets
+      targetRevision: 2.9.0  # app v2.9.0 — see docs/versions.md
+      helm:
+        valueFiles:
+          - $values/zero-trust-gitops-platform/gitops/platform/external-secrets/values.yaml
+    - repoURL: https://github.com/beniaXcode/yahia-benabbou-portfolio.git
+      targetRevision: main
+      ref: values
+  destination:
+    server: https://kubernetes.default.svc
+    namespace: external-secrets
+  syncPolicy:
+    automated:
+      selfHeal: true
+      prune: true
+    syncOptions:
+      - CreateNamespace=true
+      - ServerSideApply=true  # external-secrets' CRDs exceed kubectl's last-applied-configuration annotation limit

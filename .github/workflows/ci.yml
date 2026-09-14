@@ -96,6 +96,11 @@ jobs:
             echo "== rendering $overlay =="
             rendered="$(mktemp).yaml"
             kustomize build "$overlay" > "$rendered"
-            kyverno apply zero-trust-gitops-platform/policies/ --resource "$rendered" --policy-report || fail=1
+            # `kyverno apply` does not recurse into a directory's own
+            # subdirectories — a bare .../policies/ loads zero policies,
+            # silently, confirmed by testing. Every actual ClusterPolicy
+            # lives one level down (supply-chain/, workload-hardening/,
+            # governance/, generate/), so each must be passed explicitly.
+            kyverno apply zero-trust-gitops-platform/policies/*/ --resource "$rendered" --policy-report || fail=1
           done
           exit $fail

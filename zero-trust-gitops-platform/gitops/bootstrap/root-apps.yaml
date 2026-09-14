@@ -1,0 +1,35 @@
+# A second app-of-apps root, alongside root-platform.yaml: BRIEF.md's Phase 5
+# text names one root Application pointing at gitops/platform/, but
+# gitops/apps/ is a distinct top-level tree in the same file layout with its
+# own lifecycle (it changes on every image promotion; gitops/platform/
+# changes only when a platform component is upgraded), so it gets its own
+# root rather than being folded into root-platform.yaml.
+#
+# Deliberately *not* recursive: this must pick up only the two plain
+# manifests directly under gitops/apps/demo-api/ (project.yaml,
+# applicationset.yaml) — never descend into base/ or overlays/, which are
+# Kustomize sources meant to be rendered by kustomize, not applied as raw
+# YAML. Argo CD's directory generator without `recurse: true` reads exactly
+# one directory level, which is exactly what this needs.
+apiVersion: argoproj.io/v1alpha1
+kind: Application
+metadata:
+  name: root-apps
+  namespace: argocd
+  finalizers:
+    - resources-finalizer.argocd.argoproj.io
+spec:
+  project: default
+  source:
+    repoURL: https://github.com/beniaXcode/yahia-benabbou-portfolio.git
+    targetRevision: main
+    path: zero-trust-gitops-platform/gitops/apps/demo-api
+  destination:
+    server: https://kubernetes.default.svc
+    namespace: argocd
+  syncPolicy:
+    automated:
+      selfHeal: true
+      prune: true
+    syncOptions:
+      - CreateNamespace=true

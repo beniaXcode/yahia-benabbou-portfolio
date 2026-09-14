@@ -1,0 +1,51 @@
+# argo-cd Helm chart values — argoproj/argo-helm@argo-cd-10.9.1 (app v3.5.3)
+# See docs/versions.md for how this pin was resolved.
+configs:
+  cm:
+    # Admin account disabled (BRIEF §6 Phase 5). This sandbox has no OIDC
+    # provider to test against and no live cluster to apply this to, so the
+    # local-only fallback documented here has never been exercised for
+    # real: with the admin account disabled and no `dex.config`/`oidc.config`
+    # below wired to a real provider, the only way into this Argo CD
+    # instance is `kubectl exec` into the repo-server/application-controller
+    # pods, or a one-time `argocd admin dashboard` port-forward that bypasses
+    # auth entirely for local troubleshooting — never a checked-in password.
+    # See docs/fidelity.md (Phase 5).
+    "admin.enabled": "false"
+
+    # Illustrative OIDC SSO stanza — the issuer/clientID below are examples,
+    # not a real, working identity provider; a real deployment replaces
+    # both and stores the client secret via `configs.secret.extra` sourced
+    # from ESO (C7), never inline here.
+    "oidc.config": |
+      name: Example OIDC Provider
+      issuer: https://example-oidc-provider.invalid/
+      clientID: argocd
+      clientSecret: $oidc.clientSecret
+      requestedScopes: ["openid", "profile", "email", "groups"]
+
+    # C10-friendly: `timeout.reconciliation` (argocd-cm's own documented key
+    # for the application-controller's resync period, default 180s) is
+    # shortened here so the Phase 5 gate's "self-heal reverts a manual
+    # `kubectl edit` within the sync interval" assertion has a short,
+    # demo-sized interval to actually wait on.
+    "timeout.reconciliation": 60s
+
+  # role:readonly default (BRIEF §6 Phase 5): an authenticated user who
+  # matches no more specific rule below can view every Application's status
+  # but cannot sync, delete, or edit anything.
+  rbac:
+    "policy.default": role:readonly
+    "policy.csv": |
+      p, role:readonly, applications, get, */*, allow
+      p, role:readonly, projects, get, *, allow
+      p, role:readonly, repositories, get, *, allow
+
+  params:
+    server.insecure: "false"
+
+server:
+  # No public Ingress in this repo — the demo reaches Argo CD via
+  # `kubectl port-forward`, documented in demo/up.sh (Phase 6/7).
+  ingress:
+    enabled: false

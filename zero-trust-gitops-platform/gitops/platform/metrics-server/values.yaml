@@ -1,0 +1,8 @@
+# metrics-server Helm chart values —
+# kubernetes-sigs/metrics-server@v0.9.0 (chart version 3.13.1 at that tag,
+# app v0.8.1 — see docs/versions.md).
+args:
+  # kind-specific, demo-only: kind's kubelets present a self-signed
+  # certificate metrics-server won't otherwise trust. A real EKS cluster
+  # needs no such flag — never carry this into infra/terraform/modules/eks.
+  - --kubelet-insecure-tls

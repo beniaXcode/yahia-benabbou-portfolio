@@ -1,0 +1,7 @@
+# external-secrets Helm chart values —
+# external-secrets/external-secrets@v2.10.0 (chart version 2.9.0 at that
+# tag — see docs/versions.md). Chart defaults are used for the operator
+# itself; the AWS-Secrets-Manager-via-Pod-Identity wiring is a Phase 6
+# ClusterSecretStore/ExternalSecret concern, not something this chart's
+# values need to know about.
+installCRDs: true

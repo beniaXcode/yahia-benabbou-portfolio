@@ -1,0 +1,12 @@
+# policy-reporter Helm chart values — kyverno/policy-reporter@v3.10.0.
+# See docs/versions.md for how this pin was resolved.
+#
+# Kept close to the chart's own defaults: this component's only job here is
+# to turn the PolicyReport objects Kyverno's background/reports controllers
+# already generate (from policies/, synced by the kyverno Application) into
+# a queryable UI and Prometheus metrics — it needs no policy configuration
+# of its own.
+ui:
+  enabled: true
+metrics:
+  enabled: true

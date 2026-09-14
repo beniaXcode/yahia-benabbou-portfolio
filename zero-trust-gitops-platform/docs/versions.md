@@ -86,6 +86,51 @@ The runtime stage uses the explicit `-debian12` tag (distroless's current
 recommended form) rather than the legacy bare `distroless/static` alias,
 which also resolves but leaves the OS version implicit.
 
+## Other container images (`gitops/`)
+
+| Use | Image:tag | Digest | Resolved via | Date |
+|---|---|---|---|---|
+| `gitops/apps/demo-api/base`'s PreSync `cosign verify` hook Job | `gcr.io/projectsigstore/cosign:v2.6.5` | `sha256:ad281047f85c5e1fc6ffbc30c2b55be3b07b4032bef715a12122ce5829619aca` | Docker Registry v2 API against `gcr.io`, tag matching the cosign CLI version already resolved above | 2026-09-14 (Phase 5) |
+
+## Helm charts (`gitops/platform/`)
+
+Each platform component in `gitops/platform/` is an Argo CD `Application` sourcing a Helm chart
+from its project's own chart repository, pinned by chart version (not merely app version — a
+chart's `version` and `appVersion` fields are independent, and only the chart version is what
+`targetRevision` actually pins). None of these five chart-repo hosts
+(`argoproj.github.io`, `kyverno.github.io` ×2, `charts.external-secrets.io`,
+`kubernetes-sigs.github.io`) are reachable from this sandbox (all return a proxy-level connection
+rejection, unlike the two Docker registries and `releases.hashicorp.com` used elsewhere in this
+file) — so every version below was instead resolved from each project's own source repository,
+which anonymous `git`/`raw.githubusercontent.com` reads (already relied on for GitHub Action SHAs
+in Phase 4) do reach: `git ls-remote --tags` finds the newest chart-release tag for that chart in
+the repo that actually hosts it, then `raw.githubusercontent.com/<repo>/<tag>/<chart-path>/Chart.yaml`
+is fetched and its own `version`/`appVersion` fields are read directly — the same file `helm`
+itself would read after a real `helm repo add && helm pull`, just reached by a different transport.
+
+| Component | Chart repo (hosts the packaged chart; unreachable here) | Chart source repo used to resolve the version | Chart version | appVersion | Date |
+|---|---|---|---|---|---|
+| Argo CD | `https://argoproj.github.io/argo-helm` (chart `argo-cd`) | `github.com/argoproj/argo-helm`, tag `argo-cd-10.9.1`, `charts/argo-cd/Chart.yaml` | 10.9.1 | v3.5.3 (matches the Argo CD version already resolved above) | 2026-09-14 |
+| Kyverno | `https://kyverno.github.io/kyverno` (chart `kyverno`) | `github.com/kyverno/kyverno`, tag `kyverno-chart-3.9.1`, `charts/kyverno/Chart.yaml` | 3.9.1 | v1.19.1 (matches the Kyverno version already resolved above) | 2026-09-14 |
+| Policy Reporter | `https://kyverno.github.io/policy-reporter` (chart `policy-reporter`) | `github.com/kyverno/policy-reporter`, tag `v3.10.0`, `charts/policy-reporter/Chart.yaml` | 3.10.0 | 3.10.0 | 2026-09-14 |
+| External Secrets Operator | `https://charts.external-secrets.io` (chart `external-secrets`) | `github.com/external-secrets/external-secrets`, tag `v2.10.0`, `deploy/charts/external-secrets/Chart.yaml` | 2.9.0 | v2.9.0 | 2026-09-14 |
+| metrics-server | `https://kubernetes-sigs.github.io/metrics-server` (chart `metrics-server`) | `github.com/kubernetes-sigs/metrics-server`, tag `v0.9.0`, `charts/metrics-server/Chart.yaml` | 3.13.1 | 0.8.1 | 2026-09-14 |
+
+The row above for Policy Reporter and External Secrets Operator **corrects** the "Platform / cluster
+tooling" table above: `go list -m` resolution against
+`github.com/kyverno/policy-reporter@latest`/`github.com/external-secrets/external-secrets@latest`
+returned `v1.10.3`/`v1.3.2` respectively — real published tags on those modules, but stale ones,
+because (as with `hashicorp/aws` in Phase 2) a project's Go module import path does not always
+track its real release cadence once a project has moved on to newer major versions distributed
+some other way (Policy Reporter's own `go.mod` module path never bumped past `/v1` despite
+tagging `v3.x` releases; the same pattern as the Terraform-provider case, discovered the same way
+— by cross-checking against the project's actual tags rather than trusting the module proxy
+blindly). The values used in the table immediately above (`git ls-remote --tags`, cross-checked
+against each `Chart.yaml`) are the correct current versions and are what `gitops/platform/*`
+actually pins; the "Platform / cluster tooling" table's `v1.10.3`/`v1.3.2` rows are left as
+originally recorded, with this note, rather than silently edited, so the correction itself stays
+visible.
+
 ## Terraform providers (`infra/terraform/`)
 
 | Provider | Version | Resolved via | Date |

@@ -1,0 +1,46 @@
+# Generates the three environment Applications (BRIEF §6 Phase 5) from one
+# template, so dev/staging/prod can never drift structurally from each other
+# — only the generator's per-element values (env name, replica-count patch
+# already lives per-overlay) differ.
+apiVersion: argoproj.io/v1alpha1
+kind: ApplicationSet
+metadata:
+  name: demo-api
+  namespace: argocd
+spec:
+  goTemplate: true
+  goTemplateOptions: ["missingkey=error"]
+  generators:
+    - list:
+        elements:
+          - env: dev
+          - env: staging
+          - env: prod
+  template:
+    metadata:
+      name: "demo-api-{{.env}}"
+      labels:
+        app.kubernetes.io/name: demo-api
+        app.kubernetes.io/managed-by: argocd
+    spec:
+      project: demo-api
+      source:
+        repoURL: https://github.com/beniaXcode/yahia-benabbou-portfolio.git
+        targetRevision: main
+        path: "zero-trust-gitops-platform/gitops/apps/demo-api/overlays/{{.env}}"
+      destination:
+        server: https://kubernetes.default.svc
+        namespace: "demo-api-{{.env}}"
+      syncPolicy:
+        automated:
+          selfHeal: true  # C10 / Phase 5 gate: a manual `kubectl edit` is reverted within the sync interval
+          prune: true
+        syncOptions:
+          - CreateNamespace=true
+          - ServerSideApply=true
+        retry:
+          limit: 5
+          backoff:
+            duration: 5s
+            factor: 2
+            maxDuration: 3m

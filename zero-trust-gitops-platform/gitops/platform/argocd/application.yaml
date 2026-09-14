@@ -1,0 +1,31 @@
+# Self-managed Argo CD: the same Argo CD instance this Application object
+# lives in reconciles this Application, which in turn manages that Argo CD
+# instance's own Helm release. See values.yaml for the OIDC/RBAC/admin
+# config this brief-mandated setup actually applies.
+apiVersion: argoproj.io/v1alpha1
+kind: Application
+metadata:
+  name: argocd
+  namespace: argocd
+spec:
+  project: default
+  sources:
+    - repoURL: https://argoproj.github.io/argo-helm
+      chart: argo-cd
+      targetRevision: 10.9.1  # app v3.5.3 — see docs/versions.md
+      helm:
+        valueFiles:
+          - $values/zero-trust-gitops-platform/gitops/platform/argocd/values.yaml
+    - repoURL: https://github.com/beniaXcode/yahia-benabbou-portfolio.git
+      targetRevision: main
+      ref: values
+  destination:
+    server: https://kubernetes.default.svc
+    namespace: argocd
+  syncPolicy:
+    automated:
+      selfHeal: true
+      prune: true
+    syncOptions:
+      - CreateNamespace=true
+      - ServerSideApply=true  # argo-cd's own CRDs exceed kubectl's last-applied-configuration annotation limit

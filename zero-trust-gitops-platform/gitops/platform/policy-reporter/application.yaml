@@ -1,0 +1,26 @@
+apiVersion: argoproj.io/v1alpha1
+kind: Application
+metadata:
+  name: policy-reporter
+  namespace: argocd
+spec:
+  project: default
+  sources:
+    - repoURL: https://kyverno.github.io/policy-reporter
+      chart: policy-reporter
+      targetRevision: 3.10.0  # see docs/versions.md
+      helm:
+        valueFiles:
+          - $values/zero-trust-gitops-platform/gitops/platform/policy-reporter/values.yaml
+    - repoURL: https://github.com/beniaXcode/yahia-benabbou-portfolio.git
+      targetRevision: main
+      ref: values
+  destination:
+    server: https://kubernetes.default.svc
+    namespace: policy-reporter
+  syncPolicy:
+    automated:
+      selfHeal: true
+      prune: true
+    syncOptions:
+      - CreateNamespace=true

@@ -15,9 +15,9 @@ if this file doesn't match what that command produces.
 - **Compliance mapping:** NIST SSDF PO.5.1, CIS EKS 5.4.1, SOC 2 CC6.1
 - **Tests:** [`policies/tests/allowed-registries`](../policies/tests/allowed-registries)
 
-Every container and initContainer image must come from this account's own ECR — no Docker Hub, no GHCR, no other registry.
+Every container and initContainer image must come from this project's own registry — either its ECR repository (the Terraform- provisioned production target, see infra/terraform/modules/ecr) or its GHCR namespace (what this specific deployment's CI actually pushes to, since no AWS account backs it — see docs/fidelity.md) — with one narrow, explicitly digest-pinned exception for the upstream cosign CLI image used by gitops/apps/demo-api/base's PreSync verification hook (and Phase 6's continuous-verification CronJob): that image runs no application code and is pinned to one exact digest, rotated only by editing this policy alongside docs/versions.md. No Docker Hub, no arbitrary third-party registry.
 
-**Why this exists:** Signature verification only means something if the signer's identity also implies where the image lives. Allowing arbitrary registries would let an attacker who compromises any credential with cluster write access deploy an image from a registry this platform never pushes to or scans, sidestepping the ECR-side push/pull IAM scoping in infra/terraform/modules/ecr entirely.
+**Why this exists:** Signature verification only means something if the signer's identity also implies where the image lives. Allowing arbitrary registries would let an attacker who compromises any credential with cluster write access deploy an image from a registry this platform never pushes to or scans, sidestepping the ECR-side push/pull IAM scoping in infra/terraform/modules/ecr (or GHCR's equivalent package permissions) entirely.
 
 ### Require Image Digest
 

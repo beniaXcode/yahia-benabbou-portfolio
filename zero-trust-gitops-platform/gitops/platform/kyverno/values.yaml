@@ -1,0 +1,15 @@
+# kyverno Helm chart values — kyverno/kyverno@kyverno-chart-3.9.1 (app v1.19.1)
+# See docs/versions.md for how this pin was resolved.
+#
+# Deliberately close to the chart's own defaults: this repository's actual
+# policy behavior lives entirely in policies/ (synced as plain manifests —
+# see application.yaml's third source), not in chart values. The one thing
+# worth overriding for a kind-sized demo is trimming replica counts.
+admissionController:
+  replicas: 1
+backgroundController:
+  replicas: 1
+cleanupController:
+  replicas: 1
+reportsController:
+  replicas: 1
